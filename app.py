@@ -283,7 +283,8 @@ else:
     llm_audit = ChatNVIDIA(
         model="qwen/qwen3-235b-a22b",
         api_key= NVIDIA_API_KEY,
-        temperature=0, num_ctx=50000
+        temperature=0, num_ctx=50000,
+        extra_body={"chat_template_kwargs": {"thinking":False}}
     )
     # Display chat history
     for msg in st.session_state.risk_msgs:
