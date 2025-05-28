@@ -281,9 +281,9 @@ else:
     if 'risk_msgs' not in st.session_state:
         st.session_state.risk_msgs = []
     llm_audit = ChatNVIDIA(
-        model="google/gemma-2-27b-it",
+        model="mistralai/mistral-small-24b-instruct",
         api_key= NVIDIA_API_KEY,
-        temperature=0.1, num_ctx=50000)
+        temperature=0, num_ctx=50000)
     
     # Display chat history
     for msg in st.session_state.risk_msgs:
