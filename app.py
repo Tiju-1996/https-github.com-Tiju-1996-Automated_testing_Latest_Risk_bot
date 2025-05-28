@@ -283,9 +283,8 @@ else:
     llm_audit = ChatNVIDIA(
         model="google/gemma-2-27b-it",
         api_key= NVIDIA_API_KEY,
-        temperature=0, num_ctx=50000,
-        extra_body={"chat_template_kwargs": {"thinking":False}}
-    )
+        temperature=0.1, num_ctx=50000)
+    
     # Display chat history
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
