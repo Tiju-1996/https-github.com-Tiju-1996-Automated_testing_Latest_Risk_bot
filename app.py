@@ -304,18 +304,18 @@ else:
         st.chat_message(msg['role']).write(msg['content'])
 
     # Create ConversationalRetrievalChain for rephrasing
+    dummy_retriever = DummyRetriever()
     crc_rephraser = ConversationalRetrievalChain.from_llm(llm=llm_audit, retriever=dummy_retriever,memory=memory,return_source_documents=False,verbose=False)
     # User input at bottom
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
         # User message
-        #st.chat_message("user").write(prompt)
+        st.chat_message("user").write(prompt)
         st.session_state.risk_msgs.append({"role":"user","content":prompt})
         # Process the question
         #with st.spinner("Generating the answer..."):
         # First message: use as-is. Subsequent: rephrase using memory.
         if len(st.session_state.risk_chat_history.messages) == 0:
             question_to_process = prompt
-            st.chat_message("user").write(prompt)
         else:
             with st.spinner("Rephrasing your question with chat history..."):
                 question_to_process = crc_rephraser.combine_documents_chain.llm_chain.predict(question=prompt, chat_history=memory.buffer)
