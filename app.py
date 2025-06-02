@@ -21,6 +21,8 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import DocArrayInMemorySearch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import FAISS
+from langchain.schema.document import Document
 from langchain_ollama import ChatOllama
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -118,6 +120,13 @@ class PrintRetrievalHandler(BaseCallbackHandler):
                 self.status.markdown(doc.page_content)
             self.status.update(state="complete")
 
+
+class DummyRetriever:
+    def get_relevant_documents(self, query):
+        return [Document(page_content="", metadata={})]
+
+    async def aget_relevant_documents(self, query):
+        return [Document(page_content="", metadata={})]
 
 
 # Chart file hash (not used directly here)
@@ -280,14 +289,22 @@ else:
         st.session_state.chat_history = []
     if 'risk_msgs' not in st.session_state:
         st.session_state.risk_msgs = []
+    # Chat history for rephrasing via ConversationalRetrievalChain
+    if 'risk_chat_history' not in st.session_state:
+        st.session_state.risk_chat_history = StreamlitChatMessageHistory()
     llm_audit = ChatNVIDIA(
         model="meta/llama-3.3-70b-instruct",
         api_key= NVIDIA_API_KEY,
         temperature=0, num_ctx=50000)
+
     
+    memory = ConversationBufferMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True)
     # Display chat history
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
+
+    # Create ConversationalRetrievalChain for rephrasing
+    crc_rephraser = ConversationalRetrievalChain.from_llm(llm=llm_audit, retriever=dummy_retriever,memory=memory,return_source_documents=False,verbose=False)
     # User input at bottom
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
         # User message
@@ -295,7 +312,15 @@ else:
         st.session_state.risk_msgs.append({"role":"user","content":prompt})
         # Process the question
         #with st.spinner("Generating the answer..."):
-        conv, result, sql = process_risk_query(llm_audit, prompt)
+        # First message: use as-is. Subsequent: rephrase using memory.
+        if len(st.session_state.risk_chat_history.messages) == 0:
+            question_to_process = prompt
+        else:
+            with st.spinner("Rephrasing your question with chat history..."):
+                question_to_process = crc_rephraser.combine_documents_chain.llm_chain.predict(question=prompt, chat_history=memory.buffer)
+                placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
+                placeholders["Reframed Question"].write(question_to_process)
+        conv, result, sql = process_risk_query(llm_audit, question_to_process)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
             st.session_state.risk_msgs.append({"role":"assistant","content":"Sorry, I couldn't answer your question."})
