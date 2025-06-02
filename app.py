@@ -329,13 +329,13 @@ else:
         # Process the question
         #with st.spinner("Generating the answer..."):
         # First message: use as-is. Subsequent: rephrase using memory.
-        if len(st.session_state.risk_chat_history.messages) == 0:
-            question_to_process = prompt
-        else:
-            with st.spinner("Rephrasing your question with chat history..."):
-                question_to_process = question_rephraser.run(question=prompt)
-                placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
-                placeholders["Reframed Question"].write(question_to_process)
+        #if len(st.session_state.risk_chat_history.messages) == 0:
+            #question_to_process = prompt
+        #else:
+        with st.spinner("Rephrasing your question with chat history..."):
+            question_to_process = question_rephraser.run(question=prompt)
+            placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
+            placeholders["Reframed Question"].write(question_to_process)
         conv, result, sql = process_risk_query(llm_audit, question_to_process)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
