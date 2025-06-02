@@ -305,7 +305,7 @@ else:
 
     # Create ConversationalRetrievalChain for rephrasing
     dummy_retriever = DummyRetriever()
-    crc_rephraser = ConversationalRetrievalChain.from_llm(llm=llm_audit, retriever=dummy_retriever,memory=memory,return_source_documents=False,verbose=False)
+    crc_rephraser = ConversationalRetrievalChain.from_llm(llm=llm_audit, memory=memory,return_source_documents=False,verbose=False)
     # User input at bottom
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
         # User message
