@@ -298,14 +298,14 @@ else:
         temperature=0, num_ctx=50000)
 
     
-    memory = ConversationBufferMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True)
+    #memory = ConversationBufferMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True)
     # Display chat history
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
 
     # Create ConversationalRetrievalChain for rephrasing
-    dummy_retriever = DummyRetriever()
-    crc_rephraser = ConversationalRetrievalChain.from_llm(llm=llm_audit,retriever=retriever, memory=memory,return_source_documents=False,verbose=False)
+    #dummy_retriever = DummyRetriever()
+    #crc_rephraser = ConversationalRetrievalChain.from_llm(llm=llm_audit,retriever=retriever, memory=memory,return_source_documents=False,verbose=False)
     # User input at bottom
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
         # User message
@@ -314,14 +314,14 @@ else:
         # Process the question
         #with st.spinner("Generating the answer..."):
         # First message: use as-is. Subsequent: rephrase using memory.
-        if len(st.session_state.risk_chat_history.messages) == 0:
-            question_to_process = prompt
-        else:
-            with st.spinner("Rephrasing your question with chat history..."):
-                question_to_process = crc_rephraser.combine_documents_chain.llm_chain.predict(question=prompt, chat_history=memory.buffer)
-                placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
-                placeholders["Reframed Question"].write(question_to_process)
-        conv, result, sql = process_risk_query(llm_audit, question_to_process)
+        #if len(st.session_state.risk_chat_history.messages) == 0:
+            #question_to_process = prompt
+        #else:
+            #with st.spinner("Rephrasing your question with chat history..."):
+                ##question_to_process = crc_rephraser.combine_documents_chain.llm_chain.predict(question=prompt, chat_history=memory.buffer)
+                #placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
+                #placeholders["Reframed Question"].write(question_to_process)
+        conv, result, sql = process_risk_query(llm_audit, prompt)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
             st.session_state.risk_msgs.append({"role":"assistant","content":"Sorry, I couldn't answer your question."})
