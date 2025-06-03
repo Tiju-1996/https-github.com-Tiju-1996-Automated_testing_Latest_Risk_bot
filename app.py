@@ -270,7 +270,7 @@ def is_followup_question(llm, memory, current_question):
     else:
         result="No"    
 
-    return result.startswith("Y") or result.startswith("y")
+    return result.startswith("y")
 
 
 
