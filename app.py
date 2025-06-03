@@ -246,8 +246,8 @@ def is_followup_question(llm, memory, current_question):
         # Get the last Q&A pair
         prev_question = messages[-2].content if isinstance(messages[-2], HumanMessage) else ""
         prev_answer = messages[-1].content if isinstance(messages[-1], AIMessage) else ""
-        print("prev_qstn",prev_question)
-        print("prev_ans",prev_answer)
+        st.write("prev_qstn"+ prev_question)
+        st.write("prev_ans"+ prev_answer)
         placeholders["Last Question"].markdown("## Last Question")
         placeholders["Last Question"].write(prev_question)
         placeholders["Last Answer"].markdown("## Last Answer")
