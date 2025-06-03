@@ -399,7 +399,7 @@ else:
         # First message: use as-is. Subsequent: rephrase using memory.
        
         with st.spinner("Rephrasing your question with chat history..."):
-            if is_followup_question(llm, memory, prompt):
+            if is_followup_question(llm_audit, memory, prompt):
                 question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
                 placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
                 placeholders["Reframed Question"].write(question_to_process)
