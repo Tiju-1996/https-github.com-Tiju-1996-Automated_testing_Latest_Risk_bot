@@ -96,7 +96,7 @@ policy_flag = st.toggle("DocAI")
 with st.sidebar:
     st.markdown("### ⚙️ Intermediate Steps")
     steps_expander = st.expander("Show steps", expanded=False)
-    step_titles = ["Last Question","Last Answer","Reframed Question with memory"
+    step_titles = ["Last Question","Last Answer","Reframed Question with memory",
         "Top 10 Tables",
         "Top 3 Tables via LLM",
         "Reframed Question",
