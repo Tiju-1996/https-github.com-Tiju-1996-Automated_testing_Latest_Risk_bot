@@ -96,7 +96,7 @@ policy_flag = st.toggle("DocAI")
 with st.sidebar:
     st.markdown("### ⚙️ Intermediate Steps")
     steps_expander = st.expander("Show steps", expanded=False)
-    step_titles = [
+    step_titles = ["Last Question","Last Answer","Reframed Question with memory"
         "Top 10 Tables",
         "Top 3 Tables via LLM",
         "Reframed Question",
@@ -387,9 +387,14 @@ else:
         # First message: use as-is. Subsequent: rephrase using memory.
        
         with st.spinner("Rephrasing your question with chat history..."):
-            question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
-            placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
-            placeholders["Reframed Question"].write(question_to_process)
+            if is_followup_question(llm_audit, memory, prompt):
+                question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
+                placeholders["Reframed Question with memory"].markdown("## Rephrased Question with Memory")
+                placeholders["Reframed Question with memory"].write(question_to_process)
+            else: 
+                question_to_process = prompt
+                placeholders["Reframed Question with memory"].markdown("## Rephrased Question with Memory")
+                placeholders["Reframed Question with memory"].write(question_to_process)
         conv, result, sql = process_risk_query(llm_audit, question_to_process)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
