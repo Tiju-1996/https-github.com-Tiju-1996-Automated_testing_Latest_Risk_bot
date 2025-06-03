@@ -251,41 +251,39 @@ def is_followup_question(llm, memory, current_question):
     Returns:
         bool: True if it's a follow-up, False otherwise.
     """
-    st.write("Hi")
+    
     # Extract the most recent Q&A from memory
     messages = memory.chat_memory.messages
-    if len(messages) >= 2:
-        # Get the last Q&A pair
-        prev_question = messages[-2].content if isinstance(messages[-2], HumanMessage) else ""
-        prev_answer = messages[-1].content if isinstance(messages[-1], AIMessage) else ""
-        st.write("prev_qstn"+ prev_question)
-        st.write("prev_ans"+ prev_answer)
-        placeholders["Last Question"].markdown("## Last Question")
-        placeholders["Last Question"].write(prev_question)
-        placeholders["Last Answer"].markdown("## Last Answer")
-        placeholders["Last Answer"].write(prev_answer)
-        # Prepare prompt template
-        followup_prompt = PromptTemplate.from_template(
-            """You are a helpful assistant.
-    
-            Given:
-            - Previous user question: "{prev_question}"
-            - Previous assistant answer: "{prev_answer}"
-            - Current user question: "{current_question}"
-            
-            Determine if the current question depends on or continues the previous conversation. 
-            
-            Respond with only "Yes" or "No" — do not explain.
-                """)
-    
-        chain = LLMChain(llm=llm, prompt=followup_prompt)
-        result = chain.run({
-            "prev_question": prev_question,
-            "prev_answer": prev_answer,
-            "current_question": current_question
-        }).strip().lower()
-    else:
-        result="No"    
+    # Get the last Q&A pair
+    prev_question = messages[-2].content if isinstance(messages[-2], HumanMessage) else ""
+    prev_answer = messages[-1].content if isinstance(messages[-1], AIMessage) else ""
+    st.write("prev_qstn"+ prev_question)
+    st.write("prev_ans"+ prev_answer)
+    placeholders["Last Question"].markdown("## Last Question")
+    placeholders["Last Question"].write(prev_question)
+    placeholders["Last Answer"].markdown("## Last Answer")
+    placeholders["Last Answer"].write(prev_answer)
+    # Prepare prompt template
+    followup_prompt = PromptTemplate.from_template(
+        """You are a helpful assistant.
+
+        Given:
+        - Previous user question: "{prev_question}"
+        - Previous assistant answer: "{prev_answer}"
+        - Current user question: "{current_question}"
+        
+        Determine if the current question depends on or continues the previous conversation. 
+        
+        Respond with only "Yes" or "No" — do not explain.
+            """)
+
+    chain = LLMChain(llm=llm, prompt=followup_prompt)
+    result = chain.run({
+        "prev_question": prev_question,
+        "prev_answer": prev_answer,
+        "current_question": current_question
+    }).strip().lower()
+       
 
     return result.startswith("y")
 
