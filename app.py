@@ -373,21 +373,6 @@ else:
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
 
-    # Prompt for question rephrasing
-    rephrase_prompt = PromptTemplate(input_variables=["chat_history", "question"],
-    template="""Given the following conversation history and a follow-up question, rephrase the question to be a standalone query.
-    
-    Chat History:
-    {chat_history}
-    
-    Follow-up question:
-    {question}
-    
-    Standalone question:"""
-    )
-
-    # Create LLMChain
-    question_rephraser = LLMChain(llm=llm_audit,  prompt=rephrase_prompt,memory=memory,verbose=True)
     
 # User input at bottom
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
@@ -399,14 +384,9 @@ else:
         # First message: use as-is. Subsequent: rephrase using memory.
        
         with st.spinner("Rephrasing your question with chat history..."):
-            if is_followup_question(llm_audit, memory, prompt):
-                question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
-                placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
-                placeholders["Reframed Question"].write(question_to_process)
-            else:
-                placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
-                question_to_process=prompt
-                placeholders["Reframed Question"].write(question_to_process)
+            question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
+            placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
+            placeholders["Reframed Question"].write(question_to_process)
         conv, result, sql = process_risk_query(llm_audit, question_to_process)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
