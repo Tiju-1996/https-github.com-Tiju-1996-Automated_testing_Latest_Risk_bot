@@ -260,12 +260,12 @@ def is_followup_question(llm, memory, current_question):
         Chat History:
         {chat_history}
         
-        Follow-up question:
+        Current question:
         {question}
         
         Determine if the current question depends on or continues the previous conversation. 
         
-        Respond with only "Yes" or "No" — do not explain.
+        Respond with only "Yes" or "No" — do not explain. Please do not hallucinate.
             """)
 
 
