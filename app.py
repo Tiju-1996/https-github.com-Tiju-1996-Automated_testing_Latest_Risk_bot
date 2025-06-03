@@ -392,6 +392,7 @@ else:
                 placeholders["Reframed Question with memory"].write(question_to_process)
             else: 
                 st.session_state.risk_chat_history.clear()
+                st.session_state.risk_chat_history.add_user_message(prompt)
                 question_to_process = prompt
                 placeholders["Reframed Question with memory"].markdown("## Rephrased Question with Memory")
                 placeholders["Reframed Question with memory"].write(question_to_process)
