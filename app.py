@@ -371,7 +371,7 @@ else:
         temperature=0, num_ctx=50000)
 
     
-    memory = ConversationBufferWindowMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True,k=5)
+    memory = ConversationBufferWindowMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True,k=4)
     # Display chat history
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
