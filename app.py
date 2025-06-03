@@ -391,6 +391,7 @@ else:
                 placeholders["Reframed Question with memory"].markdown("## Rephrased Question with Memory")
                 placeholders["Reframed Question with memory"].write(question_to_process)
             else: 
+                st.experimental_rerun()
                 question_to_process = prompt
                 placeholders["Reframed Question with memory"].markdown("## Rephrased Question with Memory")
                 placeholders["Reframed Question with memory"].write(question_to_process)
