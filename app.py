@@ -251,6 +251,7 @@ def is_followup_question(llm, memory, current_question):
     Returns:
         bool: True if it's a follow-up, False otherwise.
     """
+    st.write("Hi")
     # Extract the most recent Q&A from memory
     messages = memory.chat_memory.messages
     if len(messages) >= 2:
@@ -398,7 +399,6 @@ else:
         # Process the question
         #with st.spinner("Generating the answer..."):
         # First message: use as-is. Subsequent: rephrase using memory.
-        st.write("Hi there")
         with st.spinner("Rephrasing your question with chat history..."):
             if is_followup_question(llm_audit, memory, prompt):
                 question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
@@ -479,20 +479,6 @@ df = pd.DataFrame(records)
 csv_buffer = io.StringIO()
 df.to_csv(csv_buffer, index=False)
 csv_data = csv_buffer.getvalue()
-
-
-chat_text = serialize_chat_history()
-st.markdown("---")
-st.markdown("### 📥 Download Chat History")
-st.download_button(
-    label="Download risk_chat_history.txt",
-    data=chat_text,
-    file_name="risk_chat_history.txt",
-    mime="text/plain"
-)
-
-
-
 
 
 
