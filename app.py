@@ -244,8 +244,21 @@ def is_followup_question(llm, memory, current_question):
     messages = memory.chat_memory.messages
     if len(messages) >= 2:
         # Get the last Q&A pair
-        prev_question = messages[-2].content if isinstance(messages[-2], HumanMessage) else ""
-        prev_answer = messages[-1].content if isinstance(messages[-1], AIMessage) else ""
+        #prev_question = messages[-2].content if isinstance(messages[-2], HumanMessage) else ""
+        #prev_answer = messages[-1].content if isinstance(messages[-1], AIMessage) else ""
+        prev_question = ""
+        prev_answer = ""
+        found_human = False
+
+        # Go backward to find last Human → AI pair
+        for i in range(len(messages) - 1, -1, -1):
+            if isinstance(messages[i], AIMessage) and not prev_answer:
+                prev_answer = messages[i].content
+            elif isinstance(messages[i], HumanMessage) and not prev_question and prev_answer:
+                prev_question = messages[i].content
+                break
+        prev_question =  prev_question.strip()
+        prev_answer  =  prev_answer.strip()
         placeholders["Last Question"].markdown("## Last Question")
         placeholders["Last Question"].write(prev_question)
         placeholders["Last Answer"].markdown("## Last Answer")
