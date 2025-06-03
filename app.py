@@ -25,6 +25,7 @@ from langchain.vectorstores import FAISS
 from langchain.schema.document import Document
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain_ollama import ChatOllama
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -231,6 +232,79 @@ def process_risk_query(llm, user_question):
     return conv, result, sql
 
 
+
+def is_followup_question(llm, memory, current_question):
+    """
+    Use an LLM to determine if the current question is a follow-up to the last Q&A in memory.
+
+    Returns:
+        bool: True if it's a follow-up, False otherwise.
+    """
+    # Extract the most recent Q&A from memory
+    messages = memory.chat_memory.messages
+    if len(messages) >= 2:
+        # Get the last Q&A pair
+        prev_question = messages[-2].content if isinstance(messages[-2], HumanMessage) else ""
+        prev_answer = messages[-1].content if isinstance(messages[-1], AIMessage) else ""
+    
+        # Prepare prompt template
+        followup_prompt = PromptTemplate.from_template(
+            """You are a helpful assistant.
+    
+            Given:
+            - Previous user question: "{prev_question}"
+            - Previous assistant answer: "{prev_answer}"
+            - Current user question: "{current_question}"
+            
+            Determine if the current question depends on or continues the previous conversation. 
+            
+            Respond with only "Yes" or "No" — do not explain.
+                """)
+    
+        chain = LLMChain(llm=llm, prompt=followup_prompt)
+        result = chain.run({
+            "prev_question": prev_question,
+            "prev_answer": prev_answer,
+            "current_question": current_question
+        }).strip().lower()
+    else:
+        result="No"    
+
+    return result.startswith("Y") or result.startswith("y")
+
+
+
+def rephrase_question_with_memory(llm, memory, current_question):
+    """
+    Rephrases a follow-up question into a standalone question using the latest memory buffer.
+
+    Args:
+        llm: LangChain-compatible LLM (e.g., ChatOpenAI, ChatNVIDIA, ChatOllama)
+        memory: LangChain memory object (e.g., ConversationBufferWindowMemory)
+        current_question: str - the user’s current follow-up question
+
+    Returns:
+        str: The rephrased, standalone version of the question
+    """
+    rephrase_prompt = PromptTemplate(input_variables=["chat_history", "question"],
+        template="""
+        Given the following conversation history and a follow-up question, rephrase the question to be a standalone query.
+        
+        Chat History:
+        {chat_history}
+        
+        Follow-up question:
+        {question}
+        
+        Standalone question:""".strip() )
+
+    chain = LLMChain(llm=llm,prompt=rephrase_prompt,memory=memory, verbose=False )
+    standalone_qstn = chain.run(question=current_question).strip()                 
+
+    return standalone_qstn
+
+
+
 # -- Policy Module --
 if policy_flag:
     st.success("Connected to Policy Module")
@@ -323,13 +397,16 @@ else:
         # Process the question
         #with st.spinner("Generating the answer..."):
         # First message: use as-is. Subsequent: rephrase using memory.
-        #if len(st.session_state.risk_chat_history.messages) == 0:
-            #question_to_process = prompt
-        #else:
+       
         with st.spinner("Rephrasing your question with chat history..."):
-            question_to_process = question_rephraser.run(question=prompt)
-            placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
-            placeholders["Reframed Question"].write(question_to_process)
+            is_followup_question(llm, memory, prompt):
+                question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
+                placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
+                placeholders["Reframed Question"].write(question_to_process)
+            else:
+                placeholders["Reframed Question"].markdown("## Rephrased Question with Memory")
+                question_to_process=prompt
+                placeholders["Reframed Question"].write(question_to_process)
         conv, result, sql = process_risk_query(llm_audit, question_to_process)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
