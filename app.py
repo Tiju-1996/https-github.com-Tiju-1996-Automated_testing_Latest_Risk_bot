@@ -246,7 +246,10 @@ def is_followup_question(llm, memory, current_question):
         # Get the last Q&A pair
         prev_question = messages[-2].content if isinstance(messages[-2], HumanMessage) else ""
         prev_answer = messages[-1].content if isinstance(messages[-1], AIMessage) else ""
-    
+        placeholders["Last Question"].markdown("## Last Question")
+        placeholders["Last Question"].write(prev_question)
+        placeholders["Last Answer"].markdown("## Last Answer")
+        placeholders["Last Answer"].write(prev_answer)
         # Prepare prompt template
         followup_prompt = PromptTemplate.from_template(
             """You are a helpful assistant.
