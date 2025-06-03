@@ -10,6 +10,7 @@ from PIL import Image
 from datetime import datetime
 import uuid
 import csv
+import io
 
 # Policy module imports
 from langchain.chat_models import ChatOpenAI
@@ -123,7 +124,17 @@ class PrintRetrievalHandler(BaseCallbackHandler):
                 self.status.markdown(doc.page_content)
             self.status.update(state="complete")
 
-
+def serialize_chat_history():
+    """
+    Convert StreamlitChatMessageHistory into a plain-text string.
+    Each line is "User: …" or "Assistant: …" in chronological order.
+    """
+    messages = st.session_state.risk_chat_history.messages  # list of ChatMessage
+    lines = []
+    for m in messages:
+        role = "User" if m.type == "human" else "Assistant"
+        lines.append(f"{role}: {m.content}")
+    return "\n".join(lines)
 
 
 # Chart file hash (not used directly here)
@@ -468,6 +479,24 @@ df = pd.DataFrame(records)
 csv_buffer = io.StringIO()
 df.to_csv(csv_buffer, index=False)
 csv_data = csv_buffer.getvalue()
+
+
+chat_text = serialize_chat_history()
+    st.markdown("---")
+    st.markdown("### 📥 Download Chat History")
+    st.download_button(
+        label="Download risk_chat_history.txt",
+        data=chat_text,
+        file_name="risk_chat_history.txt",
+        mime="text/plain"
+    )
+
+
+
+
+
+
+
 
 
 # Display the download button in the Streamlit sidebar
