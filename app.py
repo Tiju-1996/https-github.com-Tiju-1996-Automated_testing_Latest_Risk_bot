@@ -387,7 +387,7 @@ else:
         # Process the question
         #with st.spinner("Generating the answer..."):
         # First message: use as-is. Subsequent: rephrase using memory.
-       
+        st.write("Hi there")
         with st.spinner("Rephrasing your question with chat history..."):
             if is_followup_question(llm_audit, memory, prompt):
                 question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
