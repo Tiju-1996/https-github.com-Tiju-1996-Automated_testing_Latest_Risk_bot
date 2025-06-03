@@ -14,7 +14,7 @@ import csv
 # Policy module imports
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import PyPDFLoader
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferMemory,ConversationBufferWindowMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain_openai import OpenAIEmbeddings
 from langchain.callbacks.base import BaseCallbackHandler
@@ -123,12 +123,6 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.update(state="complete")
 
 
-class DummyRetriever:
-    def get_relevant_documents(self, query):
-        return [Document(page_content="", metadata={})]
-
-    async def aget_relevant_documents(self, query):
-        return [Document(page_content="", metadata={})]
 
 
 # Chart file hash (not used directly here)
@@ -300,7 +294,7 @@ else:
         temperature=0, num_ctx=50000)
 
     
-    memory = ConversationBufferMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True)
+    memory = ConversationBufferWindowMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True,k=5)
     # Display chat history
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
