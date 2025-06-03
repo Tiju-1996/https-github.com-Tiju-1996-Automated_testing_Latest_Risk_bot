@@ -482,14 +482,14 @@ csv_data = csv_buffer.getvalue()
 
 
 chat_text = serialize_chat_history()
-    st.markdown("---")
-    st.markdown("### 📥 Download Chat History")
-    st.download_button(
-        label="Download risk_chat_history.txt",
-        data=chat_text,
-        file_name="risk_chat_history.txt",
-        mime="text/plain"
-    )
+st.markdown("---")
+st.markdown("### 📥 Download Chat History")
+st.download_button(
+    label="Download risk_chat_history.txt",
+    data=chat_text,
+    file_name="risk_chat_history.txt",
+    mime="text/plain"
+)
 
 
 
