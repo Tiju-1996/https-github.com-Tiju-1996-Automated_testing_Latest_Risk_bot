@@ -449,7 +449,7 @@ else:
 
         # 5.2.2) Show what the memory agent decided (for debugging, optional)
         st.chat_message("assistant").write(
-            f"*(Memory‐Agent prompt to process_risk_query:)* \n  {rephrased_question}"
+            f"*Rephrased Question* \n  {rephrased_question}"
         )
         st.session_state.risk_msgs.append(
             {"role": "assistant", "content": rephrased_question}
