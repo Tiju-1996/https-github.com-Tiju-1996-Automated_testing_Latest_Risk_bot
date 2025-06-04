@@ -34,8 +34,7 @@ import io
 import json
 
 from langgraph.prebuilt import create_react_agent
-from langgraph.store.memory import InMemoryStore
-from langgraph.checkpoint import Checkpointer
+from langgraph.checkpoint.memory import InMemorySaver
 
 # Audit module imports
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
@@ -380,10 +379,7 @@ else:
     # ──────────────────────────────────────────────────────────────
     #
     # 3.1) Create an in‐memory store where LangGraph will persist state.
-    memory_store = InMemoryStore()
-    #
-    # 3.2) Wrap that into a Checkpointer, so LangGraph will snapshot/recover state.
-    checkpointer = Checkpointer(store=memory_store)
+    checkpointer = InMemorySaver()
     #
     # 3.3) Build a “zero‐tool ReAct agent” whose only job is to rephrase or
     #      pass through the question. Because we have no external tools, we
