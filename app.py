@@ -27,7 +27,8 @@ from langchain.schema.document import Document
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain.agents import MemoryAgent
+from langchain.agents import initialize_agent, AgentType
+from langchain.tools import MemoryTool
 from langchain.memory import ChatMessageHistory
 from langchain_ollama import ChatOllama
 import gspread
@@ -359,7 +360,7 @@ if policy_flag:
 else:
     st.success("Connected to Risk Management Module")
 
-    # ─── Step 1: LLM & Session‐State Initialization ────────────────────────────
+    # (1) Initialize session_id/chat_history/risk_msgs if not present
     if 'session_id' not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
     if 'chat_history' not in st.session_state:
@@ -367,59 +368,54 @@ else:
     if 'risk_msgs' not in st.session_state:
         st.session_state.risk_msgs = []
 
+    # (2) Your original LLM for generating risk answers
     llm_audit = ChatNVIDIA(
-        model="qwen/qwen2.5-coder-32b-instruct",
+        model="meta/llama-3.3-70b-instruct",
         api_key=NVIDIA_API_KEY,
         temperature=0,
         num_ctx=50000
     )
 
-    # ─── Step 2: Create / retrieve the MemoryAgent + its ChatMessageHistory ───
-    if 'risk_history' not in st.session_state:
-        # This is the “pure message‐list” that the MemoryAgent will use internally
-        st.session_state['risk_history'] = ChatMessageHistory()
-
-    if 'risk_memory_agent' not in st.session_state:
-        # MemoryAgent ties the LLM + message history into a single helper
-        st.session_state['risk_memory_agent'] = MemoryAgent(
-            llm=llm_audit,
-            memory=st.session_state['risk_history'],
-        )
-
-    # ─── Step 3: Render what’s already been said (your existing risk_msgs) ─────
+    # (3) Display existing chat history
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
 
-    # ─── Step 4: Handle new user input ───────────────────────────────────────
+    # (4) User input
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
-        # 4a. Show the user’s raw message in the UI
+
+        # (a) Echo the user message in the UI
         st.chat_message("user").write(prompt)
         st.session_state.risk_msgs.append({"role": "user", "content": prompt})
 
-        # 4b. Tell MemoryAgent’s history about this new user message
-        st.session_state['risk_history'].add_user_message(prompt)
+        # (b) FIRST: Run the MemoryAgent to “refine” the question
+        #     This step will:
+        #       • Examine st.session_state.lc_memory_history
+        #       • If `prompt` is a follow‐up, it rephrases into a standalone question
+        #       • Otherwise it just returns the original `prompt`.
+        refined_prompt = st.session_state.lc_memory_agent.run(prompt)
 
-        # 4c. Let MemoryAgent rewrite it if it’s a follow‐up; otherwise, it passes the same text back.
-        rewritten_question = st.session_state['risk_memory_agent'].run(prompt)
+        # (c) Feed the refined prompt into your existing process_risk_query(...)
+        conv, result, sql = process_risk_query(llm_audit, refined_prompt)
 
-        # 4d. Run your existing risk‐QA function on the (possibly rewritten) question
-        conv, result, sql = process_risk_query(llm_audit, rewritten_question)
-
-        # 4e. If no answer could be generated:
+        # (d) If no answer, show fallback
         if conv is None:
-            assistant_text = "Sorry, I couldn't answer your question."
-            st.chat_message("assistant").write(assistant_text)
-            st.session_state.risk_msgs.append({"role": "assistant", "content": assistant_text})
-            st.session_state['risk_history'].add_ai_message(assistant_text)
-
-        # 4f. Otherwise, display the two‐tab output and save to history
+            st.chat_message("assistant").write("Sorry, I couldn't answer your question.")
+            st.session_state.risk_msgs.append({"role": "assistant", "content": "Sorry, I couldn't answer your question."})
         else:
+            # (e) Otherwise, display as before, splitting into “Conversational” and “Tabular”
             tab1, tab2 = st.tabs(["Conversational", "Tabular"])
             tab1.chat_message("assistant").write(conv)
             tab2.dataframe(result, width=600, height=300)
-
             st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
-            st.session_state['risk_history'].add_ai_message(conv)
+
+        # (f) OPTIONAL: You may also want to tell the MemoryAgent about the final answer,
+        #     so it can store “facts” into memory. That can look like:
+        #
+        #     st.session_state.lc_memory_history.add_ai_message(conv)
+        #
+        #     or if you want the agent to decide internally when/how to write memory, 
+        #     you can skip manually writing the answer. The MemoryAgent might already 
+        #     write whatever new permanent “fact” it deems important.
 
         
             # ---- Simplified Feedback ----           
