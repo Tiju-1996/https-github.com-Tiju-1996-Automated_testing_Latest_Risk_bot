@@ -26,7 +26,7 @@ from langchain.vectorstores import FAISS
 from langchain.schema.document import Document
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
-from langchain_core.messages import HumanMessage, AIMessage
+#from langchain_core.messages import HumanMessage, AIMessage
 from langchain_ollama import ChatOllama
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -35,6 +35,7 @@ import json
 
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import InMemorySaver
+from langchain.schema import HumanMessage, SystemMessage
 
 # Audit module imports
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
