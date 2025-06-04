@@ -390,21 +390,11 @@ else:
     #        - “If this is the first question (no prior messages), reply with
     #           exactly the same user question (no change).”
     #
-    memory_agent_prompt = [
-        SystemMessage(
-            content=(
-                "You are a short‐term memory agent.  \n"
-                "You will be given a chat history (some user/assistant turns) "
-                "and a new user message.  \n"
-                "If the new message is a follow‐up that depends on previous context, "
-                "rephrase it into a self‐contained question that includes enough "
-                "context from the chat history.  \n"
-                "If it is NOT a follow‐up (i.e., this is the first or a standalone "
-                "question), just echo back the message unchanged.  \n"
-                "Return exactly the final prompt (no extra commentary)."
-            )
-        )
-    ]
+    memory_agent_prompt = """You are a short‐term memory agent. You will be given a chat history (some user/assistant turns) and a new user message. 
+                If the new message is a follow‐up that depends on previous context, rephrase it into a self‐contained question that includes enough context from the chat history.
+                If it is NOT a follow‐up (i.e., this is the first or a standalone question), just echo back the message unchanged. 
+                Return exactly the final prompt (no extra commentary)."""
+        
 
     memory_agent = create_react_agent(
         model=llm_audit,
