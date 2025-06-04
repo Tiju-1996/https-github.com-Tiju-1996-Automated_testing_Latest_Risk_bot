@@ -462,6 +462,29 @@ else:
         # ──────────────────────────────────────────────────────────
         conv, result_df, sql = process_risk_query(llm_audit, rephrased_question)
 
+
+        
+        # Format the messages into plain text
+        formatted_text = ""
+        for i, msg in enumerate(history_messages):
+            formatted_text += f"{msg['role'].capitalize()}: {msg['content']}\n"
+        
+        # Write to a temporary file
+        file_name = "chat_history_memory.txt"
+        with open(file_name, "w") as f:
+            f.write(formatted_text)
+        
+        # Streamlit download button
+        with open(file_name, "rb") as f:
+            st.download_button(
+                label="Download Chat History Memory",
+                data=f,
+                file_name=file_name,
+                mime="text/plain"
+            )
+
+
+        
         if conv is None:
             st.chat_message("assistant").write("Sorry, I couldn't answer your question.")
             st.session_state.risk_msgs.append(
@@ -473,6 +496,7 @@ else:
             tab1.chat_message("assistant").write(conv)
             tab2.dataframe(result_df, width=600, height=300)
             st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
+
 
         
             # ---- Simplified Feedback ----           
@@ -537,24 +561,6 @@ csv_data = csv_buffer.getvalue()
 
 
 
-# Format the messages into plain text
-formatted_text = ""
-for i, msg in enumerate(history_messages):
-    formatted_text += f"{msg['role'].capitalize()}: {msg['content']}\n"
-
-# Write to a temporary file
-file_name = "chat_history_memory.txt"
-with open(file_name, "w") as f:
-    f.write(formatted_text)
-
-# Streamlit download button
-with open(file_name, "rb") as f:
-    st.download_button(
-        label="Download Chat History Memory",
-        data=f,
-        file_name=file_name,
-        mime="text/plain"
-    )
 
 
 
