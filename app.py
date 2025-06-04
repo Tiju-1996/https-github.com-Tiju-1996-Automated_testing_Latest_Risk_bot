@@ -407,7 +407,7 @@ else:
     ]
 
     memory_agent = create_react_agent(
-        llm=llm_audit,
+        model=llm_audit,
         tools=[],  # no tools needed; agent only does “rewrite”
         prompt=memory_agent_prompt,
         checkpointer=checkpointer,  # this enables short-term memory
