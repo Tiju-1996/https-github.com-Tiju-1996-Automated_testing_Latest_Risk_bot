@@ -453,9 +453,6 @@ else:
         placeholders["Reframed Question with memory"].markdown("## Rephrase Question bssed on memory")
         placeholders["Reframed Question with memory"].write(rephrased_question)
         
-        st.session_state.risk_msgs.append(
-            {"role": "assistant", "content": rephrased_question}
-        )
 
         # ──────────────────────────────────────────────────────────
         # 5.3) Step 2: Call your existing risk‐query pipeline
