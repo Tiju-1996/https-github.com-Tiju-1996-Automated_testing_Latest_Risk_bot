@@ -383,17 +383,19 @@ else:
     checkpointer = InMemorySaver()
     #
     # 3.3) Build a “zero‐tool ReAct agent” whose only job is to rephrase or
-    #      pass through the question. Because we have no external tools, we
-    #      give `tools=[]`. We set a SystemMessage to instruct it to either:
-    #        - “If this is a follow‐up (you see prior messages), rewrite it into
-    #           a standalone question that includes enough context.”
-    #        - “If this is the first question (no prior messages), reply with
-    #           exactly the same user question (no change).”
-    #
-    memory_agent_prompt = """You are a short‐term memory agent. You will be given a chat history (some user/assistant turns) and a new user message. 
-                If the new message is a follow‐up that depends on previous context, rephrase it into a self‐contained question that includes enough context from the chat history.
-                If it is NOT a follow‐up (i.e., this is the first or a standalone question), just echo back the message unchanged. 
-                Return exactly the final prompt (no extra commentary)."""
+    #      pass through the question.”
+    memory_agent_prompt = """You are a memory-aware assistant specialized in short-term conversational context.
+
+        Input: A chat history (containing user and assistant turns) and a new user message.
+        
+        Task:
+        1. If the new user message is a follow-up that relies on prior context, rephrase it into a fully self-contained question by incorporating all necessary details from the chat history.
+        2. If the message is standalone or the first in the conversation, return it unchanged.
+        3. Please do not hallucinate. 
+        4. Please be very specific while framing question and keep the question short and brief.
+        5. Please decide accurately if current question is a followup or not before rephrasing and in case it is a standalone please avoid rephrasing.
+        
+        Output strictly the final rephrased (or original) message—no extra explanations, comments, or formatting. """
         
 
     memory_agent = create_react_agent(
