@@ -394,8 +394,9 @@ else:
         3. Please do not hallucinate. 
         4. Please be very specific while framing question and keep the question short and brief.
         5. Please decide accurately if current question is a followup or not before rephrasing and in case it is a standalone please avoid rephrasing.
+        6. 
         
-        Output strictly the final rephrased (or original) message—no extra explanations, comments, or formatting. """
+        Output strictly the final rephrased or original question—no extra explanations, comments, or formatting. """
         
 
     memory_agent = create_react_agent(
@@ -450,7 +451,7 @@ else:
         rephrased_question = result["messages"][-1].content
 
         # 5.2.2) Show what the memory agent decided (for debugging, optional)
-        placeholders["Reframed Question with memory"].markdown("## Rephrase Question bssed on memory")
+        placeholders["Reframed Question with memory"].markdown("## Rephrase Question based on memory")
         placeholders["Reframed Question with memory"].write(rephrased_question)
         
 
