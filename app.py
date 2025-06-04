@@ -372,7 +372,7 @@ else:
     # ──────────────────────────────────────────────────────────────
     # 2) Initialize LangChain LLM (you use ChatNVIDIA; here is ChatOpenAI)
     # ──────────────────────────────────────────────────────────────
-    llm_audit = ChatNVIDIA(model="meta/llama-3.3-70b-instruct",api_key= NVIDIA_API_KEY,temperature=1, num_ctx=50000)
+    llm_audit = ChatNVIDIA(model="meta/llama-3.3-70b-instruct",api_key= NVIDIA_API_KEY,temperature=0, num_ctx=50000)
 
     # ──────────────────────────────────────────────────────────────
     # 3) Set up LangGraph short‐term memory (thread‐scoped InMemoryStore)
