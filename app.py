@@ -100,7 +100,7 @@ policy_flag = st.toggle("DocAI")
 with st.sidebar:
     st.markdown("### ⚙️ Intermediate Steps")
     steps_expander = st.expander("Show steps", expanded=False)
-    step_titles = ["Last Question","Last Answer","Reframed Question with memory",
+    step_titles = ["Reframed Question with memory",
         "Top 10 Tables",
         "Top 3 Tables via LLM",
         "Reframed Question",
@@ -450,9 +450,9 @@ else:
         rephrased_question = result["messages"][-1].content
 
         # 5.2.2) Show what the memory agent decided (for debugging, optional)
-        st.chat_message("assistant").write(
-            f"*Rephrased Question* \n  {rephrased_question}"
-        )
+        placeholders["Reframed Question with memory"].markdown("## Rephrase Question bssed on memory")
+        placeholders["Reframed Question with memory"].write(rephrased_question)
+        
         st.session_state.risk_msgs.append(
             {"role": "assistant", "content": rephrased_question}
         )
