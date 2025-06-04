@@ -27,7 +27,6 @@ from langchain.schema.document import Document
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
-from langgraph.agents import MemoryAgent, MemoryStorage 
 from langchain_ollama import ChatOllama
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
