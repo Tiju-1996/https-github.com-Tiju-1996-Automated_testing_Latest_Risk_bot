@@ -27,6 +27,8 @@ from langchain.schema.document import Document
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain.agents import MemoryAgent
+from langchain.memory import ChatMessageHistory
 from langchain_ollama import ChatOllama
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -353,60 +355,72 @@ if policy_flag:
             st.write(resp)
 
 # -- Risk/Audit Module --
+# -- Risk/Audit Module --
 else:
     st.success("Connected to Risk Management Module")
-    # Init LLM and session history
+
+    # ─── Step 1: LLM & Session‐State Initialization ────────────────────────────
     if 'session_id' not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
     if 'risk_msgs' not in st.session_state:
         st.session_state.risk_msgs = []
-    # Chat history for rephrasing via ConversationalRetrievalChain
-    if 'risk_chat_history' not in st.session_state:
-        st.session_state.risk_chat_history = StreamlitChatMessageHistory()
-    llm_audit = ChatNVIDIA(
-        model="meta/llama-3.3-70b-instruct",
-        api_key= NVIDIA_API_KEY,
-        temperature=0, num_ctx=50000)
 
-    
-    memory = ConversationBufferWindowMemory( memory_key="chat_history", chat_memory=st.session_state.risk_chat_history, return_messages=True,k=4)
-    # Display chat history
+    llm_audit = ChatNVIDIA(
+        model="qwen/qwen2.5-coder-32b-instruct",
+        api_key=NVIDIA_API_KEY,
+        temperature=0,
+        num_ctx=50000
+    )
+
+    # ─── Step 2: Create / retrieve the MemoryAgent + its ChatMessageHistory ───
+    if 'risk_history' not in st.session_state:
+        # This is the “pure message‐list” that the MemoryAgent will use internally
+        st.session_state['risk_history'] = ChatMessageHistory()
+
+    if 'risk_memory_agent' not in st.session_state:
+        # MemoryAgent ties the LLM + message history into a single helper
+        st.session_state['risk_memory_agent'] = MemoryAgent(
+            llm=llm_audit,
+            memory=st.session_state['risk_history'],
+        )
+
+    # ─── Step 3: Render what’s already been said (your existing risk_msgs) ─────
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
 
-    
-# User input at bottom
+    # ─── Step 4: Handle new user input ───────────────────────────────────────
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
-        # User message
+        # 4a. Show the user’s raw message in the UI
         st.chat_message("user").write(prompt)
-        st.session_state.risk_msgs.append({"role":"user","content":prompt})
-        # Process the question
-        #with st.spinner("Generating the answer..."):
-        # First message: use as-is. Subsequent: rephrase using memory.
-        with st.spinner("Rephrasing your question with chat history..."):
-            if is_followup_question(llm_audit, memory, prompt):
-                question_to_process = rephrase_question_with_memory(llm_audit, memory, prompt)
-                placeholders["Reframed Question with memory"].markdown("## Rephrased Question with Memory")
-                placeholders["Reframed Question with memory"].write(question_to_process)
-            else: 
-                st.session_state.risk_chat_history.clear()
-                st.session_state.risk_chat_history.add_user_message(prompt)
-                question_to_process = prompt
-                placeholders["Reframed Question with memory"].markdown("## Rephrased Question with Memory")
-                placeholders["Reframed Question with memory"].write(question_to_process)
-        conv, result, sql = process_risk_query(llm_audit, question_to_process)
+        st.session_state.risk_msgs.append({"role": "user", "content": prompt})
+
+        # 4b. Tell MemoryAgent’s history about this new user message
+        st.session_state['risk_history'].add_user_message(prompt)
+
+        # 4c. Let MemoryAgent rewrite it if it’s a follow‐up; otherwise, it passes the same text back.
+        rewritten_question = st.session_state['risk_memory_agent'].run(prompt)
+
+        # 4d. Run your existing risk‐QA function on the (possibly rewritten) question
+        conv, result, sql = process_risk_query(llm_audit, rewritten_question)
+
+        # 4e. If no answer could be generated:
         if conv is None:
-            st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
-            st.session_state.risk_msgs.append({"role":"assistant","content":"Sorry, I couldn't answer your question."})
+            assistant_text = "Sorry, I couldn't answer your question."
+            st.chat_message("assistant").write(assistant_text)
+            st.session_state.risk_msgs.append({"role": "assistant", "content": assistant_text})
+            st.session_state['risk_history'].add_ai_message(assistant_text)
+
+        # 4f. Otherwise, display the two‐tab output and save to history
         else:
-            # Assistant response
-            #st.chat_message("assistant").write(conv)
             tab1, tab2 = st.tabs(["Conversational", "Tabular"])
             tab1.chat_message("assistant").write(conv)
-            tab2.dataframe(result,width=600, height=300)
-            st.session_state.risk_msgs.append({"role":"assistant","content":conv})
+            tab2.dataframe(result, width=600, height=300)
+
+            st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
+            st.session_state['risk_history'].add_ai_message(conv)
+
         
             # ---- Simplified Feedback ----           
             # 1. Store the last QA in session_state so it's accessible inside the form
