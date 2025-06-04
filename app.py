@@ -34,7 +34,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 import io
 import json
 
-
+from langgraph.prebuilt import create_react_agent
+from langgraph.store.memory import InMemoryStore
+from langgraph.checkpoint import Checkpointer
 
 # Audit module imports
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
@@ -355,66 +357,134 @@ if policy_flag:
             st.write(resp)
 
 # -- Risk/Audit Module --
-# -- Risk/Audit Module --
 else:
     st.success("Connected to Risk Management Module")
 
-    # (1) Initialize session_id/chat_history/risk_msgs if not present
+    # ──────────────────────────────────────────────────────────────
+    # 1) Session‐scoped state: session_id, chat_history, and memory
+    # ──────────────────────────────────────────────────────────────
     if 'session_id' not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
+
     if 'risk_msgs' not in st.session_state:
+        # risk_msgs is a list of dicts like {"role": "user"/"assistant", "content": "..."}
         st.session_state.risk_msgs = []
 
-    # (2) Your original LLM for generating risk answers
-    llm_audit = ChatNVIDIA(
-        model="meta/llama-3.3-70b-instruct",
-        api_key=NVIDIA_API_KEY,
-        temperature=0,
-        num_ctx=50000
-    )
+    # ──────────────────────────────────────────────────────────────
+    # 2) Initialize LangChain LLM (you use ChatNVIDIA; here is ChatOpenAI)
+    # ──────────────────────────────────────────────────────────────
+    llm_audit = ChatNVIDIA(model="meta/llama-3.3-70b-instruct",api_key= NVIDIA_API_KEY,temperature=1, num_ctx=50000)
 
-    # (3) Display existing chat history
+    # ──────────────────────────────────────────────────────────────
+    # 3) Set up LangGraph short‐term memory (thread‐scoped InMemoryStore)
+    #    and wrap it into a minimal “memory agent” using create_react_agent.
+    # ──────────────────────────────────────────────────────────────
+    #
+    # 3.1) Create an in‐memory store where LangGraph will persist state.
+    memory_store = InMemoryStore()
+    #
+    # 3.2) Wrap that into a Checkpointer, so LangGraph will snapshot/recover state.
+    checkpointer = Checkpointer(store=memory_store)
+    #
+    # 3.3) Build a “zero‐tool ReAct agent” whose only job is to rephrase or
+    #      pass through the question. Because we have no external tools, we
+    #      give `tools=[]`. We set a SystemMessage to instruct it to either:
+    #        - “If this is a follow‐up (you see prior messages), rewrite it into
+    #           a standalone question that includes enough context.”
+    #        - “If this is the first question (no prior messages), reply with
+    #           exactly the same user question (no change).”
+    #
+    memory_agent_prompt = [
+        SystemMessage(
+            content=(
+                "You are a short‐term memory agent.  \n"
+                "You will be given a chat history (some user/assistant turns) "
+                "and a new user message.  \n"
+                "If the new message is a follow‐up that depends on previous context, "
+                "rephrase it into a self‐contained question that includes enough "
+                "context from the chat history.  \n"
+                "If it is NOT a follow‐up (i.e., this is the first or a standalone "
+                "question), just echo back the message unchanged.  \n"
+                "Return exactly the final prompt (no extra commentary)."
+            )
+        )
+    ]
+
+    memory_agent = create_react_agent(
+        llm=llm_audit,
+        tools=[],  # no tools needed; agent only does “rewrite”
+        prompt=memory_agent_prompt,
+        checkpointer=checkpointer,  # this enables short-term memory
+    )
+    #
+    # Note: By default, create_react_agent stores its entire “state” (the
+    # list of messages + scratchpad) under the given `thread_id`.
+    # :contentReference[oaicite:0]{index=0}
+
+    # ──────────────────────────────────────────────────────────────
+    # 4) Display any previous chat‐turns in Streamlit
+    # ──────────────────────────────────────────────────────────────
     for msg in st.session_state.risk_msgs:
         st.chat_message(msg['role']).write(msg['content'])
 
-    # (4) User input
+    # ──────────────────────────────────────────────────────────────
+    # 5) When the user types a new prompt:
+    # ──────────────────────────────────────────────────────────────
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
-
-        # (a) Echo the user message in the UI
+        # 5.1) Show the user message in the UI
         st.chat_message("user").write(prompt)
         st.session_state.risk_msgs.append({"role": "user", "content": prompt})
 
-        # (b) FIRST: Run the MemoryAgent to “refine” the question
-        #     This step will:
-        #       • Examine st.session_state.lc_memory_history
-        #       • If `prompt` is a follow‐up, it rephrases into a standalone question
-        #       • Otherwise it just returns the original `prompt`.
-        refined_prompt = st.session_state.lc_memory_agent.run(prompt)
+        # ──────────────────────────────────────────────────────────
+        # 5.2) Step 1: Let LangGraph memory_agent rephrase (if needed)
+        # ──────────────────────────────────────────────────────────
+        #
+        # Build the “messages” list we pass into the agent.  LangGraph’s
+        # agent.invoke expects {"messages": [ ... ]} where each message is
+        # a dict like {"role": "user"/"assistant", "content": "..."} (or you
+        # can also pass HumanMessage/AIMessage). Here we convert our `risk_msgs`.
+        #
+        history_messages = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in st.session_state.risk_msgs
+        ]
 
-        # (c) Feed the refined prompt into your existing process_risk_query(...)
-        conv, result, sql = process_risk_query(llm_audit, refined_prompt)
+        # 5.2.1) Invoke memory_agent with the current thread_id
+        config = {"configurable": {"thread_id": st.session_state.session_id}}
+        result = memory_agent.invoke(
+            {"messages": history_messages},  # entire chat history so far
+            config=config,
+        )
 
-        # (d) If no answer, show fallback
+        # The agent’s response is in result["messages"][-1].content
+        # By our SystemMessage above, it will be EXACTLY the prompt we should send
+        # into process_risk_query (either unchanged, or intelligently rephrased).
+        rephrased_question = result["messages"][-1].content
+
+        # 5.2.2) Show what the memory agent decided (for debugging, optional)
+        st.chat_message("assistant").write(
+            f"*(Memory‐Agent prompt to process_risk_query:)* \n  {rephrased_question}"
+        )
+        st.session_state.risk_msgs.append(
+            {"role": "assistant", "content": rephrased_question}
+        )
+
+        # ──────────────────────────────────────────────────────────
+        # 5.3) Step 2: Call your existing risk‐query pipeline
+        # ──────────────────────────────────────────────────────────
+        conv, result_df, sql = process_risk_query(llm_audit, rephrased_question)
+
         if conv is None:
             st.chat_message("assistant").write("Sorry, I couldn't answer your question.")
-            st.session_state.risk_msgs.append({"role": "assistant", "content": "Sorry, I couldn't answer your question."})
+            st.session_state.risk_msgs.append(
+                {"role": "assistant", "content": "Sorry, I couldn't answer your question."}
+            )
         else:
-            # (e) Otherwise, display as before, splitting into “Conversational” and “Tabular”
+            # Show the actual assistant’s final “conversational” response (conv)
             tab1, tab2 = st.tabs(["Conversational", "Tabular"])
             tab1.chat_message("assistant").write(conv)
-            tab2.dataframe(result, width=600, height=300)
+            tab2.dataframe(result_df, width=600, height=300)
             st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
-
-        # (f) OPTIONAL: You may also want to tell the MemoryAgent about the final answer,
-        #     so it can store “facts” into memory. That can look like:
-        #
-        #     st.session_state.lc_memory_history.add_ai_message(conv)
-        #
-        #     or if you want the agent to decide internally when/how to write memory, 
-        #     you can skip manually writing the answer. The MemoryAgent might already 
-        #     write whatever new permanent “fact” it deems important.
 
         
             # ---- Simplified Feedback ----           
