@@ -394,7 +394,6 @@ else:
         3. Please do not hallucinate. 
         4. Please be very specific while framing question and keep the question short and brief.
         5. Please decide accurately if current question is a followup or not before rephrasing and in case it is a standalone please avoid rephrasing.
-        6. 
         
         Output strictly the final rephrased or original question—no extra explanations, comments, or formatting. """
         
