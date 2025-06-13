@@ -25,7 +25,7 @@ from langchain.prompts.chat import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import BaseRetriever, Document
-from typing import List
+from typing import List, Dict, Any
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import io
@@ -124,18 +124,17 @@ class PrintRetrievalHandler(BaseCallbackHandler):
 
 
 class ListRetriever(BaseRetriever):
-    """A simple in‐memory retriever over a list of strings."""
+    # declare these as Pydantic fields
+    tags: List[str] = []
+    metadata: Dict[str, Any] = {}
+    inheritable_tags: List[str] = []
 
     def __init__(self, docs: List[str]):
-        # turn each string into a Document
+        super().__init__()                   # ensure BaseModel initialization
+        # now assign your private doc list
         self._docs = [Document(page_content=d) for d in docs]
-        # LangChain will expect these attributes:
-        self.tags = []                  # no special tags
-        self.metadata = {}              # no global metadata
-        self.inheritable_tags = []      # allow passing tags downstream
 
     def get_relevant_documents(self, query: str) -> List[Document]:
-        # for now we just return the entire history every time
         return self._docs
 
 
