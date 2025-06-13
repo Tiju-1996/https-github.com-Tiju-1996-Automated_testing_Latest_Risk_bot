@@ -360,7 +360,7 @@ else:
         # User message
         st.chat_message("user").write(prompt)
         #st.session_state.risk_msgs.append({"role":"user","content":prompt})
-        st.session_state.risk_msgs(HumanMessage(content=prompt))
+        st.session_state.risk_msgs.append(HumanMessage(content=prompt))
         rephrase_prompt_with_history(llm_audit, st.session_state.risk_msgs, prompt)
         # Process the question
         #with st.spinner("Generating the answer..."):
