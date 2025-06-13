@@ -25,6 +25,7 @@ from langchain.prompts.chat import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import BaseRetriever, Document
+from typing import List
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import io
@@ -122,12 +123,19 @@ class PrintRetrievalHandler(BaseCallbackHandler):
             self.status.update(state="complete")
 
 
-# (2) Define an in-memory retriever over the past conversation texts.
 class ListRetriever(BaseRetriever):
-    def __init__(self, docs):
+    """A simple in‐memory retriever over a list of strings."""
+
+    def __init__(self, docs: List[str]):
+        # turn each string into a Document
         self._docs = [Document(page_content=d) for d in docs]
-    def get_relevant_documents(self, query):
-        # Always return the full history for context (could filter by query if desired)
+        # LangChain will expect these attributes:
+        self.tags = []                  # no special tags
+        self.metadata = {}              # no global metadata
+        self.inheritable_tags = []      # allow passing tags downstream
+
+    def get_relevant_documents(self, query: str) -> List[Document]:
+        # for now we just return the entire history every time
         return self._docs
 
 
