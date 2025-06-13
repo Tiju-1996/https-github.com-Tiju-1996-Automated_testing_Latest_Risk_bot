@@ -360,8 +360,21 @@ else:
     llm_audit = ChatNVIDIA(model="ibnzterrell/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",base_url="http://54.161.46.7/v1/",temperature=0,max_tokens=1024, top_p=0.1,seed=42)
     
     # Display chat history
+    #for msg in st.session_state.risk_msgs:
+        #st.chat_message(msg['role']).write(msg['content'])
+
     for msg in st.session_state.risk_msgs:
-        st.chat_message(msg['role']).write(msg['content'])
+        if isinstance(msg, HumanMessage):
+            # user turn
+            st.chat_message("user").write(msg.content)
+        elif isinstance(msg, AIMessage):
+            # assistant turn
+            st.chat_message("assistant").write(msg.content)
+        else:
+            # fallback, in case you have any raw strings or dicts
+            role = msg.get("role") if isinstance(msg, dict) else "user"
+            content = msg.get("content") if isinstance(msg, dict) else str(msg)
+            st.chat_message(role).write(content)
     # User input at bottom
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
         # User message
