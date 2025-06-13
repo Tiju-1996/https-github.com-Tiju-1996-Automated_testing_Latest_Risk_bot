@@ -20,6 +20,11 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import DocArrayInMemorySearch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import HumanMessage, AIMessage
+from langchain.prompts.chat import ChatPromptTemplate, MessagesPlaceholder
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.schema import BaseRetriever, Document
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import io
@@ -115,6 +120,66 @@ class PrintRetrievalHandler(BaseCallbackHandler):
                 self.status.write(f"**Document {idx} from {source}**")
                 self.status.markdown(doc.page_content)
             self.status.update(state="complete")
+
+
+# (2) Define an in-memory retriever over the past conversation texts.
+class ListRetriever(BaseRetriever):
+    def __init__(self, docs):
+        self._docs = [Document(page_content=d) for d in docs]
+    def get_relevant_documents(self, query):
+        # Always return the full history for context (could filter by query if desired)
+        return self._docs
+
+
+def rephrase_prompt_with_history(llm, history_msgs, prompt):
+    """
+    Rephrases a user prompt using conversation history for better context.
+
+    Args:
+        llm: LangChain LLM instance.
+        history_msgs: List of past messages (can be strings or dicts with 'role' and 'content').
+        prompt: Latest user question to be rephrased.
+
+    Returns:
+        Rephrased prompt as a string.
+    """
+
+    # Flatten messages to string for retriever
+    history_texts = [
+        f"User: {m.content}" if isinstance(m, HumanMessage)
+        else f"Assistant: {m.content}"
+        for m in history_msgs
+    ]
+
+    retriever = ListRetriever(history_texts)
+
+    # Prompt to generate self-contained question
+    contextualize_prompt = ChatPromptTemplate.from_messages([
+        ("system", "Given the conversation history and the latest user question, "
+                   "formulate a standalone question that includes necessary context. "
+                   "Do not answer the question, just rephrase it if needed."),
+        MessagesPlaceholder("chat_history"),
+        ("user", "{input}")
+    ])
+
+    # Output prompt template
+    rephrase_prompt = ChatPromptTemplate.from_messages([
+        ("system", "Rewrite the user’s question so it is self-contained given the conversation context:\n\n{context}"),
+        ("user", "{input}")
+    ])
+
+    # Build the retrieval and answer chain
+    history_retriever = create_history_aware_retriever(llm, retriever, contextualize_prompt)
+    qa_chain = create_stuff_documents_chain(llm, rephrase_prompt)
+    rephrase_chain = create_retrieval_chain(history_retriever, qa_chain)
+
+    # Call the chain
+    result = rephrase_chain.invoke({
+        "input": prompt,
+        "chat_history": history_msgs,
+    })
+
+    return result.get("answer", prompt)  # fallback to original if failed
 
 
 
@@ -294,20 +359,24 @@ else:
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
         # User message
         st.chat_message("user").write(prompt)
-        st.session_state.risk_msgs.append({"role":"user","content":prompt})
+        #st.session_state.risk_msgs.append({"role":"user","content":prompt})
+        st.session_state.risk_msgs(HumanMessage(content=prompt))
+        rephrase_prompt_with_history(llm_audit, st.session_state.risk_msgs, prompt)
         # Process the question
         #with st.spinner("Generating the answer..."):
         conv, result, sql = process_risk_query(llm_audit, prompt)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
-            st.session_state.risk_msgs.append({"role":"assistant","content":"Sorry, I couldn't answer your question."})
+            #st.session_state.risk_msgs.append({"role":"assistant","content":"Sorry, I couldn't answer your question."})
+            st.session_state.risk_msgs.append(AIMessage(content="Sorry, I couldn't answer your question."))
         else:
             # Assistant response
             #st.chat_message("assistant").write(conv)
             tab1, tab2 = st.tabs(["Conversational", "Tabular"])
             tab1.chat_message("assistant").write(conv)
             tab2.dataframe(result,width=600, height=300)
-            st.session_state.risk_msgs.append({"role":"assistant","content":conv})
+            #st.session_state.risk_msgs.append({"role":"assistant","content":conv})
+            st.session_state.risk_msgs.append(AIMessage(content=conv))
         
             # ---- Simplified Feedback ----           
             # 1. Store the last QA in session_state so it's accessible inside the form
