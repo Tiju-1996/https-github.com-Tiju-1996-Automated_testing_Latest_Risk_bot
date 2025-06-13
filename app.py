@@ -95,7 +95,7 @@ policy_flag = st.toggle("DocAI")
 with st.sidebar:
     st.markdown("### ⚙️ Intermediate Steps")
     steps_expander = st.expander("Show steps", expanded=False)
-    step_titles = [
+    step_titles = [ "Rephrased Question based on Memory",
         "Top 10 Tables",
         "Top 3 Tables via LLM",
         "Reframed Question",
@@ -369,6 +369,9 @@ else:
         #st.session_state.risk_msgs.append({"role":"user","content":prompt})
         st.session_state.risk_msgs.append(HumanMessage(content=prompt))
         prompt = rephrase_prompt_with_history(llm_audit, st.session_state.risk_msgs, prompt)
+        placeholders["Rephrased Question based on Memory"].markdown("##  Rephrased Question based on Memory")
+        placeholders["Rephrased Question based on Memory"].code(prompt)
+        "Rephrased Question based on Memory"
         # Process the question
         #with st.spinner("Generating the answer..."):
         conv, result, sql = process_risk_query(llm_audit, prompt)
