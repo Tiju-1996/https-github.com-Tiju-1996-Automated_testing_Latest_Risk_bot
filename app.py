@@ -170,7 +170,7 @@ def rephrase_prompt_with_history(llm, history_msgs, prompt):
 
      # 2. Create simple in-memory retriever from limited history
     #retriever = SimpleListRetriever(history_texts)
-    retriever = RunnableLambda(lambda x: SimpleListRetriever(limited_history).get_relevant_documents(x["input"]))
+    retriever = RunnableLambda(lambda x: SimpleListRetriever(history_texts).get_relevant_documents(x["input"]))
 
     # 3. Prompt to formulate standalone question
     contextualize_prompt = ChatPromptTemplate.from_messages([
