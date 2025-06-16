@@ -26,8 +26,7 @@ from langchain.chains import create_history_aware_retriever, create_retrieval_ch
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import BaseRetriever, Document
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.retrievers import ContextualCompressionRetriever  # optional alternative
-from langchain.vectorstores.base import VectorStoreRetriever 
+from langchain.schema.runnable import RunnableLambda
 from typing import List, Dict, Any
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -170,7 +169,8 @@ def rephrase_prompt_with_history(llm, history_msgs, prompt):
     ]
 
      # 2. Create simple in-memory retriever from limited history
-    retriever = SimpleListRetriever(history_texts)
+    #retriever = SimpleListRetriever(history_texts)
+    retriever = RunnableLambda(lambda x: SimpleListRetriever(limited_history).get_relevant_documents(x["input"]))
 
     # 3. Prompt to formulate standalone question
     contextualize_prompt = ChatPromptTemplate.from_messages([
