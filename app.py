@@ -483,15 +483,13 @@ else:
         
         if conv is None:
             st.chat_message("assistant").write("Sorry, I couldn't answer your question.")
-            st.session_state.risk_msgs.append(
-                {"role": "assistant", "content": "Sorry, I couldn't answer your question."}
-            )
+            #st.session_state.risk_msgs.append({"role": "assistant", "content": "Sorry, I couldn't answer your question."} )
         else:
             # Show the actual assistant’s final “conversational” response (conv)
             tab1, tab2 = st.tabs(["Conversational", "Tabular"])
             tab1.chat_message("assistant").write(conv)
             tab2.dataframe(result_df, width=600, height=300)
-            st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
+            #st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
 
 
         
