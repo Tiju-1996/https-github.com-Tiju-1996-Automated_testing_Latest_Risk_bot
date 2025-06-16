@@ -25,6 +25,9 @@ from langchain.prompts.chat import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.schema import BaseRetriever, Document
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.retrievers import ContextualCompressionRetriever  # optional alternative
+from langchain.vectorstores.base import VectorStoreRetriever 
 from typing import List, Dict, Any
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -138,6 +141,14 @@ class ListRetriever(BaseRetriever):
         return self._docs
 
 
+class SimpleListRetriever:
+    def __init__(self, messages):
+        self.messages = messages
+
+    def get_relevant_documents(self, query):
+        # Return the messages as pseudo-documents (works with `create_history_aware_retriever`)
+        return [{"page_content": msg} for msg in self.messages]
+
 def rephrase_prompt_with_history(llm, history_msgs, prompt):
     """
     Rephrases a user prompt using conversation history for better context.
@@ -158,23 +169,23 @@ def rephrase_prompt_with_history(llm, history_msgs, prompt):
         for m in history_msgs
     ]
 
-    retriever = ListRetriever(history_texts)
+     # 2. Create simple in-memory retriever from limited history
+    retriever = SimpleListRetriever(history_texts)
 
-    # Prompt to generate self-contained question
+    # 3. Prompt to formulate standalone question
     contextualize_prompt = ChatPromptTemplate.from_messages([
-        ("system", "Given the conversation history and the latest user question, "
-                   "formulate a standalone question that includes necessary context. "
-                   "Do not answer the question, just rephrase it if needed."),
-        MessagesPlaceholder("chat_history"),
+        ("system", 
+         "You are a helpful assistant. Given the conversation history and the new question, "
+         "rewrite the question so that it stands on its own with all necessary context."),
         ("user", "{input}")
     ])
 
-    # Output prompt template
+    # 4. Chain to return the rephrased version only
     rephrase_prompt = ChatPromptTemplate.from_messages([
-        ("system", "Rewrite the user’s question so it is self-contained given the conversation context:\n\n{context}"),
+        ("system", 
+         "Rewrite the user's question to be self-contained based on the following context:\n\n{context}"),
         ("user", "{input}")
     ])
-
     # Build the retrieval and answer chain
     history_retriever = create_history_aware_retriever(llm, retriever, contextualize_prompt)
     qa_chain = create_stuff_documents_chain(llm, rephrase_prompt)
