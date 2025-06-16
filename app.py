@@ -9,30 +9,32 @@ from PIL import Image
 from datetime import datetime
 import uuid
 import csv
+import io
 
 # Policy module imports
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import PyPDFLoader
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferMemory,ConversationBufferWindowMemory
 from langchain.memory.chat_message_histories import StreamlitChatMessageHistory
 from langchain_openai import OpenAIEmbeddings
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import DocArrayInMemorySearch
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import HumanMessage, AIMessage
-from langchain.prompts.chat import ChatPromptTemplate, MessagesPlaceholder
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.schema import BaseRetriever, Document
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.schema.runnable import RunnableLambda
-from typing import List, Dict, Any
+from langchain.vectorstores import FAISS
+from langchain.schema.document import Document
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+#from langchain_core.messages import HumanMessage, AIMessage
+from langchain_ollama import ChatOllama
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import io
 import json
 
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain.schema import HumanMessage, SystemMessage
 
 # Audit module imports
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
@@ -63,7 +65,7 @@ NVIDIA_API_KEY   = st.secrets["nvidia"]["api_key"]
 
 # -- Configurations --
 logo = Image.open(r"Assets/aurex_logo.png")
-descriptions_file = r"all_table_metadata_v2.txt"
+descriptions_file = r"Assets/all_table_metadata_v2.txt"
 examples_file = r"Assets/Example question datasets.xlsx"
 
 db_config = {
@@ -97,7 +99,7 @@ policy_flag = st.toggle("DocAI")
 with st.sidebar:
     st.markdown("### ⚙️ Intermediate Steps")
     steps_expander = st.expander("Show steps", expanded=False)
-    step_titles = [ "Rephrased Question based on Memory",
+    step_titles = ["Reframed Question with memory",
         "Top 10 Tables",
         "Top 3 Tables via LLM",
         "Reframed Question",
@@ -124,81 +126,17 @@ class PrintRetrievalHandler(BaseCallbackHandler):
                 self.status.markdown(doc.page_content)
             self.status.update(state="complete")
 
-
-class ListRetriever(BaseRetriever):
-    # declare these as Pydantic fields
-    tags: List[str] = []
-    metadata: Dict[str, Any] = {}
-    inheritable_tags: List[str] = []
-
-    def __init__(self, docs: List[str]):
-        super().__init__()                   # ensure BaseModel initialization
-        # now assign your private doc list
-        self._docs = [Document(page_content=d) for d in docs]
-
-    def get_relevant_documents(self, query: str) -> List[Document]:
-        return self._docs
-
-
-class SimpleListRetriever:
-    def __init__(self, messages):
-        self.messages = messages
-
-    def get_relevant_documents(self, query):
-        # Return the messages as pseudo-documents (works with `create_history_aware_retriever`)
-        return [{"page_content": msg} for msg in self.messages]
-
-def rephrase_prompt_with_history(llm, history_msgs, prompt):
+def serialize_chat_history():
     """
-    Rephrases a user prompt using conversation history for better context.
-
-    Args:
-        llm: LangChain LLM instance.
-        history_msgs: List of past messages (can be strings or dicts with 'role' and 'content').
-        prompt: Latest user question to be rephrased.
-
-    Returns:
-        Rephrased prompt as a string.
+    Convert StreamlitChatMessageHistory into a plain-text string.
+    Each line is "User: …" or "Assistant: …" in chronological order.
     """
-
-    # Flatten messages to string for retriever
-    history_texts = [
-        f"User: {m.content}" if isinstance(m, HumanMessage)
-        else f"Assistant: {m.content}"
-        for m in history_msgs
-    ]
-
-     # 2. Create simple in-memory retriever from limited history
-    #retriever = SimpleListRetriever(history_texts)
-    retriever = RunnableLambda(lambda x: SimpleListRetriever(history_texts).get_relevant_documents(x["input"]))
-
-    # 3. Prompt to formulate standalone question
-    contextualize_prompt = ChatPromptTemplate.from_messages([
-        ("system", 
-         "You are a helpful assistant. Given the conversation history and the new question, "
-         "rewrite the question so that it stands on its own with all necessary context."),
-        ("user", "{input}")
-    ])
-
-    # 4. Chain to return the rephrased version only
-    rephrase_prompt = ChatPromptTemplate.from_messages([
-        ("system", 
-         "Rewrite the user's question to be self-contained based on the following context:\n\n{context}"),
-        ("user", "{input}")
-    ])
-    # Build the retrieval and answer chain
-    history_retriever = create_history_aware_retriever(llm, retriever, contextualize_prompt)
-    qa_chain = create_stuff_documents_chain(llm, rephrase_prompt)
-    rephrase_chain = create_retrieval_chain(history_retriever, qa_chain)
-
-    # Call the chain
-    result = rephrase_chain.invoke({
-        "input": prompt,
-        "chat_history": history_msgs,
-    })
-
-    return result.get("answer", prompt)  # fallback to original if failed
-
+    messages = st.session_state.risk_chat_history.messages  # list of ChatMessage
+    lines = []
+    for m in messages:
+        role = "User" if m.type == "human" else "Assistant"
+        lines.append(f"{role}: {m.content}")
+    return "\n".join(lines)
 
 
 # Chart file hash (not used directly here)
@@ -293,15 +231,8 @@ def process_risk_query(llm, user_question):
                 return "Sorry, I couldn't answer your question.", None, sql
         placeholders["Query Result Sample"].markdown("## Tabular Result of SQL Query")        
         #placeholders["Query Result Sample"].table(result)
-        try:
-            placeholders["Query Result Sample"].dataframe(result, width=600, height=300)
-        except ValueError as e:
-            # detect and drop duplicate columns
-            if "Duplicate column names found" in str(e):
-                result = result.loc[:, ~result.columns.duplicated()]
-                placeholders["Query Result Sample"].dataframe(result, width=600, height=300)
-            else:
-                return "Sorry, I couldn't answer your question.", None, sql
+        placeholders["Query Result Sample"].dataframe(result, width=600, height=300)
+       
 
     with st.spinner("📈 Analyzing SQL query results..."):
         conv = analyze_sql_query(user_question, result.to_dict(orient='records'), llm)
@@ -312,6 +243,71 @@ def process_risk_query(llm, user_question):
         conv = finetune_conv_answer(user_question, conv, llm)
 
     return conv, result, sql
+
+
+
+def is_followup_question(llm, memory, current_question):
+    """
+    Use an LLM to determine if the current question is a follow-up to the last Q&A in memory.
+
+    Returns:
+        bool: True if it's a follow-up, False otherwise.
+    """
+    
+    # Prepare prompt template
+    followup_prompt = PromptTemplate(input_variables=["chat_history", "question"],
+        template = """You are a helpful assistant.
+        Given:
+        
+        Chat History:
+        {chat_history}
+        
+        Current question:
+        {question}
+        
+        Determine if the current question depends on or continues the previous conversation. 
+        
+        Respond with only "Yes" or "No" — do not explain. Please do not hallucinate.
+            """)
+
+
+    chain = LLMChain(llm=llm,prompt=followup_prompt,memory=memory, verbose=False )
+    result = chain.run(question=current_question).strip().lower() 
+       
+
+    return result.startswith("y")
+
+
+
+def rephrase_question_with_memory(llm, memory, current_question):
+    """
+    Rephrases a follow-up question into a standalone question using the latest memory buffer.
+
+    Args:
+        llm: LangChain-compatible LLM (e.g., ChatOpenAI, ChatNVIDIA, ChatOllama)
+        memory: LangChain memory object (e.g., ConversationBufferWindowMemory)
+        current_question: str - the user’s current follow-up question
+
+    Returns:
+        str: The rephrased, standalone version of the question
+    """
+    rephrase_prompt = PromptTemplate(input_variables=["chat_history", "question"],
+        template="""
+        Given the following conversation history and a follow-up question, rephrase the question to be a standalone query.
+        
+        Chat History:
+        {chat_history}
+        
+        Follow-up question:
+        {question}
+        
+        Standalone question:""".strip() )
+
+    chain = LLMChain(llm=llm,prompt=rephrase_prompt,memory=memory, verbose=False )
+    standalone_qstn = chain.run(question=current_question).strip()                 
+
+    return standalone_qstn
+
 
 
 # -- Policy Module --
@@ -339,7 +335,8 @@ if policy_flag:
         retriever = configure_retriever(uploaded)
         msgs = StreamlitChatMessageHistory()
         memory = ConversationBufferMemory(memory_key="chat_history", chat_memory=msgs, return_messages=True)
-        llm_policy = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key= OPENAI_KEY , temperature=0, streaming=True)
+        #llm_policy = ChatOpenAI(model_name="gpt-3.5-turbo", openai_api_key= OPENAI_KEY , temperature=0, streaming=True)
+        llm_policy= ollama_llm = ChatOllama(model="llama3",temperature=0,base_url="https://cf8d-34-60-249-53.ngrok-free.app")
         qa_chain = ConversationalRetrievalChain.from_llm(llm_policy, retriever=retriever, memory=memory, verbose=False)
     
     if len(msgs.messages)==0 or st.sidebar.button("Clear history"):
@@ -360,57 +357,143 @@ if policy_flag:
 # -- Risk/Audit Module --
 else:
     st.success("Connected to Risk Management Module")
-    # Init LLM and session history
+
+    # ──────────────────────────────────────────────────────────────
+    # 1) Session‐scoped state: session_id, chat_history, and memory
+    # ──────────────────────────────────────────────────────────────
     if 'session_id' not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
-    if 'risk_msgs' not in st.session_state:
-        st.session_state.risk_msgs = []
-    llm_audit = ChatNVIDIA(model="meta/llama-3.3-70b-instruct",api_key= NVIDIA_API_KEY,temperature=0, num_ctx=50000)
-    #llm_audit = ChatNVIDIA(model="ibnzterrell/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",base_url="http://54.161.46.7/v1/",temperature=0,max_tokens=1024, top_p=0.1,seed=42)
-    
-    # Display chat history
-    #for msg in st.session_state.risk_msgs:
-        #st.chat_message(msg['role']).write(msg['content'])
 
+    if 'risk_msgs' not in st.session_state:
+        # risk_msgs is a list of dicts like {"role": "user"/"assistant", "content": "..."}
+        st.session_state.risk_msgs = []
+
+    # ──────────────────────────────────────────────────────────────
+    # 2) Initialize LangChain LLM (you use ChatNVIDIA; here is ChatOpenAI)
+    # ──────────────────────────────────────────────────────────────
+    llm_audit = ChatNVIDIA(model="meta/llama-3.3-70b-instruct",api_key= NVIDIA_API_KEY,temperature=0, num_ctx=50000)
+
+    # ──────────────────────────────────────────────────────────────
+    # 3) Set up LangGraph short‐term memory (thread‐scoped InMemoryStore)
+    #    and wrap it into a minimal “memory agent” using create_react_agent.
+    # ──────────────────────────────────────────────────────────────
+    #
+    # 3.1) Create an in‐memory store where LangGraph will persist state.
+    checkpointer = InMemorySaver()
+    #
+    # 3.3) Build a “zero‐tool ReAct agent” whose only job is to rephrase or
+    #      pass through the question.”
+    memory_agent_prompt = """You are a memory-aware assistant specialized in short-term conversational context.
+
+        Input: A chat history (containing user and assistant turns) and a new user message.
+        
+        Task:
+        1. If the new user message is a follow-up that relies on prior context, rephrase it into a fully self-contained question by incorporating all necessary details from the chat history.
+        2. If the message is standalone or the first in the conversation, return it unchanged.
+        3. Please do not hallucinate. 
+        4. Please be very specific while framing question and keep the question short and brief.
+        5. Please decide accurately if current question is a followup or not before rephrasing and in case it is a standalone please avoid rephrasing.
+        
+        Output strictly the final rephrased or original question—no extra explanations, comments, or formatting. """
+        
+
+    memory_agent = create_react_agent(
+        model=llm_audit,
+        tools=[],  # no tools needed; agent only does “rewrite”
+        prompt=memory_agent_prompt,
+        checkpointer=checkpointer,  # this enables short-term memory
+    )
+    #
+    # Note: By default, create_react_agent stores its entire “state” (the
+    # list of messages + scratchpad) under the given `thread_id`.
+    # :contentReference[oaicite:0]{index=0}
+
+    # ──────────────────────────────────────────────────────────────
+    # 4) Display any previous chat‐turns in Streamlit
+    # ──────────────────────────────────────────────────────────────
     for msg in st.session_state.risk_msgs:
-        if isinstance(msg, HumanMessage):
-            # user turn
-            st.chat_message("user").write(msg.content)
-        elif isinstance(msg, AIMessage):
-            # assistant turn
-            st.chat_message("assistant").write(msg.content)
-        else:
-            # fallback, in case you have any raw strings or dicts
-            role = msg.get("role") if isinstance(msg, dict) else "user"
-            content = msg.get("content") if isinstance(msg, dict) else str(msg)
-            st.chat_message(role).write(content)
-    # User input at bottom
+        st.chat_message(msg['role']).write(msg['content'])
+
+    # ──────────────────────────────────────────────────────────────
+    # 5) When the user types a new prompt:
+    # ──────────────────────────────────────────────────────────────
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
-        # User message
+        # 5.1) Show the user message in the UI
         st.chat_message("user").write(prompt)
-        #st.session_state.risk_msgs.append({"role":"user","content":prompt})
-        st.session_state.risk_msgs.append(HumanMessage(content=prompt))
-        prompt = rephrase_prompt_with_history(llm_audit, st.session_state.risk_msgs, prompt)
-        placeholders["Rephrased Question based on Memory"].markdown("##  Rephrased Question based on Memory")
-        placeholders["Rephrased Question based on Memory"].code(prompt)
-        "Rephrased Question based on Memory"
-        # Process the question
-        #with st.spinner("Generating the answer..."):
-        conv, result, sql = process_risk_query(llm_audit, prompt)
+        st.session_state.risk_msgs.append({"role": "user", "content": prompt})
+
+        # ──────────────────────────────────────────────────────────
+        # 5.2) Step 1: Let LangGraph memory_agent rephrase (if needed)
+        # ──────────────────────────────────────────────────────────
+        #
+        # Build the “messages” list we pass into the agent.  LangGraph’s
+        # agent.invoke expects {"messages": [ ... ]} where each message is
+        # a dict like {"role": "user"/"assistant", "content": "..."} (or you
+        # can also pass HumanMessage/AIMessage). Here we convert our `risk_msgs`.
+        #
+        history_messages = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in st.session_state.risk_msgs
+        ]
+
+        # 5.2.1) Invoke memory_agent with the current thread_id
+        config = {"configurable": {"thread_id": st.session_state.session_id}}
+        result = memory_agent.invoke(
+            {"messages": history_messages},  # entire chat history so far
+            config=config,
+        )
+
+        # The agent’s response is in result["messages"][-1].content
+        # By our SystemMessage above, it will be EXACTLY the prompt we should send
+        # into process_risk_query (either unchanged, or intelligently rephrased).
+        rephrased_question = result["messages"][-1].content
+
+        # 5.2.2) Show what the memory agent decided (for debugging, optional)
+        placeholders["Reframed Question with memory"].markdown("## Rephrase Question based on memory")
+        placeholders["Reframed Question with memory"].write(rephrased_question)
+        
+
+        # ──────────────────────────────────────────────────────────
+        # 5.3) Step 2: Call your existing risk‐query pipeline
+        # ──────────────────────────────────────────────────────────
+        conv, result_df, sql = process_risk_query(llm_audit, rephrased_question)
+
+
+        
+        # Format the messages into plain text
+        formatted_text = ""
+        for i, msg in enumerate(history_messages):
+            formatted_text += f"{msg['role'].capitalize()}: {msg['content']}\n"
+        
+        # Write to a temporary file
+        file_name = "chat_history_memory.txt"
+        with open(file_name, "w") as f:
+            f.write(formatted_text)
+        
+        # Streamlit download button
+        with open(file_name, "rb") as f:
+            st.download_button(
+                label="Download Chat History Memory",
+                data=f,
+                file_name=file_name,
+                mime="text/plain"
+            )
+
+
+        
         if conv is None:
-            st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
-            #st.session_state.risk_msgs.append({"role":"assistant","content":"Sorry, I couldn't answer your question."})
-            st.session_state.risk_msgs.append(AIMessage(content="Sorry, I couldn't answer your question."))
+            st.chat_message("assistant").write("Sorry, I couldn't answer your question.")
+            st.session_state.risk_msgs.append(
+                {"role": "assistant", "content": "Sorry, I couldn't answer your question."}
+            )
         else:
-            # Assistant response
-            #st.chat_message("assistant").write(conv)
+            # Show the actual assistant’s final “conversational” response (conv)
             tab1, tab2 = st.tabs(["Conversational", "Tabular"])
             tab1.chat_message("assistant").write(conv)
-            tab2.dataframe(result,width=600, height=300)
-            #st.session_state.risk_msgs.append({"role":"assistant","content":conv})
-            st.session_state.risk_msgs.append(AIMessage(content=conv))
+            tab2.dataframe(result_df, width=600, height=300)
+            st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
+
+
         
             # ---- Simplified Feedback ----           
             # 1. Store the last QA in session_state so it's accessible inside the form
@@ -471,6 +554,12 @@ df = pd.DataFrame(records)
 csv_buffer = io.StringIO()
 df.to_csv(csv_buffer, index=False)
 csv_data = csv_buffer.getvalue()
+
+
+
+
+
+
 
 
 # Display the download button in the Streamlit sidebar
