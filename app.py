@@ -442,6 +442,8 @@ else:
             for msg in st.session_state.risk_mem
         ]
 
+        history_messages = history_messages[-5:]
+
         # 5.2.1) Invoke memory_agent with the current thread_id
         config = {"configurable": {"thread_id": st.session_state.session_id}}
         result = memory_agent.invoke(
