@@ -231,7 +231,15 @@ def process_risk_query(llm, user_question):
                 return "Sorry, I couldn't answer your question.", None, sql
         placeholders["Query Result Sample"].markdown("## Tabular Result of SQL Query")        
         #placeholders["Query Result Sample"].table(result)
-        placeholders["Query Result Sample"].dataframe(result, width=600, height=300)
+        try:
+            placeholders["Query Result Sample"].dataframe(result, width=600, height=300)
+        except ValueError as e:
+            # detect and drop duplicate columns
+            if "Duplicate column names found" in str(e):
+                result = result.loc[:, ~result.columns.duplicated()]
+                placeholders["Query Result Sample"].dataframe(result, width=600, height=300)
+            else:
+                return "Sorry, I couldn't answer your question.", None, sql
        
 
     with st.spinner("📈 Analyzing SQL query results..."):
@@ -442,7 +450,7 @@ else:
             for msg in st.session_state.risk_mem
         ]
 
-        history_messages = history_messages[-5:]
+        history_messages = history_messages[-4:]
 
         # 5.2.1) Invoke memory_agent with the current thread_id
         config = {"configurable": {"thread_id": st.session_state.session_id}}
