@@ -368,6 +368,10 @@ else:
         # risk_msgs is a list of dicts like {"role": "user"/"assistant", "content": "..."}
         st.session_state.risk_msgs = []
 
+    if 'risk_mem' not in st.session_state:
+        # risk_mem is a list of dicts like {"role": "user"/"assistant", "content": "..."}
+        st.session_state.risk_mem = []
+
     # ──────────────────────────────────────────────────────────────
     # 2) Initialize LangChain LLM (you use ChatNVIDIA; here is ChatOpenAI)
     # ──────────────────────────────────────────────────────────────
@@ -422,6 +426,7 @@ else:
         # 5.1) Show the user message in the UI
         st.chat_message("user").write(prompt)
         st.session_state.risk_msgs.append({"role": "user", "content": prompt})
+        st.session_state.risk_mem.append({"role": "user", "content": prompt})
 
         # ──────────────────────────────────────────────────────────
         # 5.2) Step 1: Let LangGraph memory_agent rephrase (if needed)
@@ -434,7 +439,7 @@ else:
         #
         history_messages = [
             {"role": msg["role"], "content": msg["content"]}
-            for msg in st.session_state.risk_msgs
+            for msg in st.session_state.risk_mem
         ]
 
         # 5.2.1) Invoke memory_agent with the current thread_id
@@ -484,13 +489,13 @@ else:
         
         if conv is None:
             st.chat_message("assistant").write("Sorry, I couldn't answer your question.")
-            #st.session_state.risk_msgs.append({"role": "assistant", "content": "Sorry, I couldn't answer your question."} )
+            st.session_state.risk_msgs.append({"role": "assistant", "content": "Sorry, I couldn't answer your question."} )
         else:
             # Show the actual assistant’s final “conversational” response (conv)
             tab1, tab2 = st.tabs(["Conversational", "Tabular"])
             tab1.chat_message("assistant").write(conv)
             tab2.dataframe(result_df, width=600, height=300)
-            #st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
+            st.session_state.risk_msgs.append({"role": "assistant", "content": conv})
 
 
         
