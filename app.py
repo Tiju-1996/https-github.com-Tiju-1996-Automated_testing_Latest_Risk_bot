@@ -440,6 +440,8 @@ else:
         ]
 
         history_messages = history_messages[-4:]
+        if len(history_messages) == 0:
+           history_messages.append({"role": "user", "content": prompt})
         st.session_state.risk_mem.append({"role": "user", "content": prompt})
 
         # ──────────────────────────────────────────────────────────
