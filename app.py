@@ -434,14 +434,6 @@ else:
         # 5.1) Show the user message in the UI
         st.chat_message("user").write(prompt)
         st.session_state.risk_msgs.append({"role": "user", "content": prompt})
-        history_messages = [
-            {"role": msg["role"], "content": msg["content"]}
-            for msg in st.session_state.risk_mem
-        ]
-
-        history_messages = history_messages[-4:]
-        if len(history_messages) == 0:
-           history_messages.append({"role": "user", "content": prompt})
         st.session_state.risk_mem.append({"role": "user", "content": prompt})
 
         # ──────────────────────────────────────────────────────────
@@ -454,7 +446,8 @@ else:
         # can also pass HumanMessage/AIMessage). Here we convert our `risk_msgs`.
         #
     
-
+        history_messages = [ {"role": msg["role"], "content": msg["content"]} for msg in st.session_state.risk_mem]
+        history_messages = history_messages[-5:]
         # 5.2.1) Invoke memory_agent with the current thread_id
         config = {"configurable": {"thread_id": st.session_state.session_id}}
         result = memory_agent.invoke(
