@@ -434,6 +434,12 @@ else:
         # 5.1) Show the user message in the UI
         st.chat_message("user").write(prompt)
         st.session_state.risk_msgs.append({"role": "user", "content": prompt})
+        history_messages = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in st.session_state.risk_mem
+        ]
+
+        history_messages = history_messages[-4:]
         st.session_state.risk_mem.append({"role": "user", "content": prompt})
 
         # ──────────────────────────────────────────────────────────
