@@ -451,12 +451,7 @@ else:
         # a dict like {"role": "user"/"assistant", "content": "..."} (or you
         # can also pass HumanMessage/AIMessage). Here we convert our `risk_msgs`.
         #
-        history_messages = [
-            {"role": msg["role"], "content": msg["content"]}
-            for msg in st.session_state.risk_mem
-        ]
-
-        history_messages = history_messages[-4:]
+    
 
         # 5.2.1) Invoke memory_agent with the current thread_id
         config = {"configurable": {"thread_id": st.session_state.session_id}}
