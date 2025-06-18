@@ -279,8 +279,8 @@ def is_followup_question(llm, memory, current_question):
             """)
 
 
-    chain = LLMChain(llm=llm,prompt=followup_prompt,memory=memory, verbose=False )
-    result = chain.run(question=current_question).strip().lower() 
+    chain = LLMChain(llm=llm,prompt=followup_prompt, verbose=False )
+    result = chain.run(question=current_question,chat_history=memory).strip().lower() 
        
 
     return result.startswith("y")
@@ -433,31 +433,18 @@ else:
     if prompt := st.chat_input(placeholder="Ask a question about the Risk Management module"):
         # 5.1) Show the user message in the UI
         st.chat_message("user").write(prompt)
+        followup_flag = is_followup_question(llm_audit, st.session_state.risk_mem, prompt)
         st.session_state.risk_msgs.append({"role": "user", "content": prompt})
         st.session_state.risk_mem.append({"role": "user", "content": prompt})
-
-        # ──────────────────────────────────────────────────────────
-        # 5.2) Step 1: Let LangGraph memory_agent rephrase (if needed)
-        # ──────────────────────────────────────────────────────────
-        #
-        # Build the “messages” list we pass into the agent.  LangGraph’s
-        # agent.invoke expects {"messages": [ ... ]} where each message is
-        # a dict like {"role": "user"/"assistant", "content": "..."} (or you
-        # can also pass HumanMessage/AIMessage). Here we convert our `risk_msgs`.
-        #
-    
+        if followup_flag == False:
+          st.session_state.risk_mem.clear()
+          st.session_state.risk_mem.append({"role": "user", "content": prompt})
         history_messages = [ {"role": msg["role"], "content": msg["content"]} for msg in st.session_state.risk_mem]
-        history_messages = history_messages[-5:]
+
         # 5.2.1) Invoke memory_agent with the current thread_id
         config = {"configurable": {"thread_id": st.session_state.session_id}}
-        result = memory_agent.invoke(
-            {"messages": history_messages},  # entire chat history so far
-            config=config,
-        )
-
-        # The agent’s response is in result["messages"][-1].content
-        # By our SystemMessage above, it will be EXACTLY the prompt we should send
-        # into process_risk_query (either unchanged, or intelligently rephrased).
+        result = memory_agent.invoke({"messages": history_messages}, config=config,)
+        
         rephrased_question = result["messages"][-1].content
 
         # 5.2.2) Show what the memory agent decided (for debugging, optional)
