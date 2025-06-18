@@ -264,19 +264,28 @@ def is_followup_question(llm, memory, current_question):
     chat_history = "\n".join([f"user: {entry['content']}" for entry in memory])
     # Prepare prompt template
     followup_prompt = PromptTemplate(input_variables=["chat_history", "question"],
-        template = """You are a helpful assistant.
-        Given:
-        
+        template = """You are a follow‑up detection assistant. Your job is to decide whether the user’s latest question is a direct continuation of the prior dialogue.
+
         Chat History:
         {chat_history}
         
-        Current question:
+        New user question:
         {question}
         
-        Determine if the current question depends on or continues the previous conversation. 
+        Instructions:
+        1. If the new question relies on context, references, or unresolved entities from the history above, answer “Yes.”
+        2. If it is standalone or introduces a new topic, answer “No.”
+        3. Do NOT provide any additional text—only “Yes” or “No.”
+        4. Do NOT hallucinate or guess context beyond what’s given.
         
-        Respond with only "Yes" or "No" — do not explain. Please do not hallucinate.
-            """)
+        Examples:
+        • History: “What time does the store close?”  
+          Question: “And do they offer delivery?” → Yes
+        
+        • History: “Can you tell me about your refund policy?”  
+          Question: “What’s the weather today?” → No
+        
+        Respond now with "Yes" or "No" only:""")
 
 
     chain = LLMChain(llm=llm,prompt=followup_prompt, verbose=True )
