@@ -279,7 +279,7 @@ def is_followup_question(llm, memory, current_question):
             """)
 
 
-    chain = LLMChain(llm=llm,prompt=followup_prompt, verbose=False )
+    chain = LLMChain(llm=llm,prompt=followup_prompt, verbose=True )
     result = chain.run(question=current_question,chat_history=chat_history).strip().lower() 
        
 
