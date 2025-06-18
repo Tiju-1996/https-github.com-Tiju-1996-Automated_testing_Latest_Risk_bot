@@ -261,7 +261,7 @@ def is_followup_question(llm, memory, current_question):
     Returns:
         bool: True if it's a follow-up, False otherwise.
     """
-    
+    chat_history = "\n".join([f"user: {entry['content']}" for entry in memory])
     # Prepare prompt template
     followup_prompt = PromptTemplate(input_variables=["chat_history", "question"],
         template = """You are a helpful assistant.
@@ -280,7 +280,7 @@ def is_followup_question(llm, memory, current_question):
 
 
     chain = LLMChain(llm=llm,prompt=followup_prompt, verbose=False )
-    result = chain.run(question=current_question,chat_history=memory).strip().lower() 
+    result = chain.run(question=current_question,chat_history=chat_history).strip().lower() 
        
 
     return result.startswith("y")
@@ -299,6 +299,7 @@ def rephrase_question_with_memory(llm, memory, current_question):
     Returns:
         str: The rephrased, standalone version of the question
     """
+
     rephrase_prompt = PromptTemplate(input_variables=["chat_history", "question"],
         template="""
         Given the following conversation history and a follow-up question, rephrase the question to be a standalone query.
@@ -441,12 +442,14 @@ else:
           st.session_state.risk_mem.append({"role": "user", "content": prompt})
         history_messages = [ {"role": msg["role"], "content": msg["content"]} for msg in st.session_state.risk_mem]
 
-        # 5.2.1) Invoke memory_agent with the current thread_id
-        config = {"configurable": {"thread_id": st.session_state.session_id}}
-        result = memory_agent.invoke({"messages": history_messages}, config=config,)
         
-        rephrased_question = result["messages"][-1].content
-
+        if followup_flag == True:
+            # 5.2.1) Invoke memory_agent with the current thread_id
+            config = {"configurable": {"thread_id": st.session_state.session_id}}
+            result = memory_agent.invoke({"messages": history_messages}, config=config,)
+            rephrased_question = result["messages"][-1].content
+        else:
+            rephrased_question = prompt
         # 5.2.2) Show what the memory agent decided (for debugging, optional)
         placeholders["Reframed Question with memory"].markdown("## Rephrase Question based on memory")
         placeholders["Reframed Question with memory"].write(rephrased_question)
