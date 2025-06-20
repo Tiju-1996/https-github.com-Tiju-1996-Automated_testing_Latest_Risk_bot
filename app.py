@@ -266,26 +266,36 @@ def is_followup_question(llm, memory, current_question):
     followup_prompt = PromptTemplate(input_variables=["chat_history", "question"],
         template = """You are a follow‑up detection assistant. Your job is to decide whether the user’s latest question is a direct continuation of the prior dialogue.
 
-        Chat History:
-        {chat_history}
-        
-        New user question:
-        {question}
-        
-        Instructions:
-        1. If the new question relies on context, references, or unresolved entities from the history above, answer “Yes.”
-        2. If it is standalone or introduces a new topic, answer “No.”
-        3. Do NOT provide any additional text—only “Yes” or “No.”
-        4. Do NOT hallucinate or guess context beyond what’s given.
-        
-        Examples:
-        • History: “What time does the store close?”  
-          Question: “And do they offer delivery?” → Yes
-        
-        • History: “Can you tell me about your refund policy?”  
-          Question: “What’s the weather today?” → No
-        
-        Respond now with "Yes" or "No" only:""")
+Chat History:
+{chat_history}
+
+New user question:
+{question}
+
+Instructions:
+1. If the new question relies on context, references (pronouns in current question), or unresolved entities from the history above, answer “Yes.”
+2. If it is standalone or introduces a new topic, answer “No.”
+3. Do NOT provide any additional text—only “Yes” or “No.”
+4. Do NOT hallucinate or guess context beyond what’s given.
+5. Please note if a question has similarity/connected to same topic from previous question, it doesn't necessarily mean it is followup to previous question.
+
+Examples:
+• History:  
+  List the total sales by region for Q1.  
+  Break down Q1 sales by product category.  
+  Which category in the Northeast had the highest growth?
+
+  Question: What were the top three best‑selling products in that region? → Yes
+
+• History:  
+  Show the count of support tickets by priority level.  
+  List all tickets escalated to Level 2 in May.  
+  How many of the Level 2 tickets were resolved within SLA?
+
+  Question: Generate a monthly trend chart for new tickets in June. → No
+
+Respond now with “Yes” or “No” only:
+""")
 
 
     chain = LLMChain(llm=llm,prompt=followup_prompt, verbose=True )
