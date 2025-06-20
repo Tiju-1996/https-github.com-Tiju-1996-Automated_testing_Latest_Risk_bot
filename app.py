@@ -479,8 +479,8 @@ else:
         # ──────────────────────────────────────────────────────────
         # 5.3) Step 2: Call your existing risk‐query pipeline
         # ──────────────────────────────────────────────────────────
-        conv, result_df, sql = process_risk_query(llm_audit, rephrased_question)
-        
+        #conv, result_df, sql = process_risk_query(llm_audit, rephrased_question)
+        conv, result_df, sql = "Ans",None,""
 
         
         # Format the messages into plain text
