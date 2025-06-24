@@ -296,8 +296,36 @@ def is_followup_question(llm, memory, current_question):
           How many of the Level 2 tickets were resolved within SLA?
         
           Question: Generate a monthly trend chart for new tickets in June. → No
-        
-        Respond now with “Yes” or “No” only:""")
+
+        • History:
+          Retrieve monthly revenue for January.
+          Show the same for February.
+          Compare January and February revenue.
+            
+          Question: What was the percentage change between those two months? → Yes
+            
+        • History:
+          List all active projects in Q2.
+          Filter to those with budgets over $100K.
+          Sort by expected ROI.
+            
+          Question: “List all active projects in Q3.” → No
+            
+        • History:
+          What were our top five selling products last quarter?
+          Drill down sales by product category.
+          Highlight categories with under 10% growth.
+            
+          Question: Which specific product in the above under-performing categories needs restocking? → Yes
+            
+        • History:
+          How many new user sign-ups did we get in May?
+          Break that down by referral source.
+          What was the conversion rate from email campaigns?
+            
+          Question: What is the user churn rate in August? → No
+                    
+          Respond now with “Yes” or “No” only:""")
 
 
     chain = LLMChain(llm=llm,prompt=followup_prompt, verbose=True )
