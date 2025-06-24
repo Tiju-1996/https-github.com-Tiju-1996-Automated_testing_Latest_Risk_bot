@@ -335,36 +335,24 @@ def is_followup_question(llm, memory, current_question):
     return result.startswith("y")
 
 
-
-def rephrase_question_with_memory(llm, memory, current_question):
-    """
-    Rephrases a follow-up question into a standalone question using the latest memory buffer.
-
-    Args:
-        llm: LangChain-compatible LLM (e.g., ChatOpenAI, ChatNVIDIA, ChatOllama)
-        memory: LangChain memory object (e.g., ConversationBufferWindowMemory)
-        current_question: str - the user’s current follow-up question
-
-    Returns:
-        str: The rephrased, standalone version of the question
-    """
-
-    rephrase_prompt = PromptTemplate(input_variables=["chat_history", "question"],
-        template="""
-        Given the following conversation history and a follow-up question, rephrase the question to be a standalone query.
+#This function is not used currently anywhere plaease ignore this function
+#def rephrase_question_with_memory(llm, memory, current_question)
+    #rephrase_prompt = PromptTemplate(input_variables=["chat_history", "question"],
+        #template="""
+        #Given the following conversation history and a follow-up question, rephrase the question to be a standalone query.
         
-        Chat History:
-        {chat_history}
+        #Chat History:
+        #{chat_history}
         
-        Follow-up question:
-        {question}
+        #Follow-up question:
+        #{question}
         
-        Standalone question:""".strip() )
+        #Standalone question:""".strip() )
 
-    chain = LLMChain(llm=llm,prompt=rephrase_prompt,memory=memory, verbose=False )
-    standalone_qstn = chain.run(question=current_question).strip()                 
+    #chain = LLMChain(llm=llm,prompt=rephrase_prompt,memory=memory, verbose=False )
+    #standalone_qstn = chain.run(question=current_question).strip()                 
 
-    return standalone_qstn
+    #return standalone_qstn
 
 
 
