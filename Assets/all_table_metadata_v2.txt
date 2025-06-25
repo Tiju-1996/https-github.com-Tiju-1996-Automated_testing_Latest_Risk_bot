@@ -559,9 +559,11 @@ Columns:
                                 not been intiatated yet;
     additional_major_process:  (Major Process) Additional sub-processes related to the risk.
     additional_designation:  (Designation 1) Additional roles or positions responsible for managing the risk.
-    key_risk:  (Key Risk) Indicator flagging whether this risk is considered a key or high-priority risk.
+    key_risk:  (Key Risk) Indicator flagging whether this risk is considered a key risk. Use this column
+                    only each time when the question is on key risks.
     risk_extra_user_list:  (People - Multi Select) List of users associated with monitoring or managing the risk.
-    top_risk:  (Top Risk) Indicator specifying whether the risk is one of the top risks in the organization; yes indicate it is a top risk; 'No' not top risk.
+    top_risk:  (Top Risk) Indicator specifying whether the risk is one of the top risks in the organization; 'Yes' indicate it is a top risk; 'No' indicates not top risk. Use this column
+                    only each time when the question is on top risks.
     risk_auxiliary_user_list:  (People - Multi Select) Additional users assigned to assist in risk mitigation efforts.
     risk_appetite:  (Risk Appetite) Defined risk tolerance level for this specific risk.
     risk_new_user_list:  (People - Multi Select) Additional list of users associated with the risk.
