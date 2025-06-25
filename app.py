@@ -264,7 +264,8 @@ def is_followup_question(llm, memory, current_question):
     chat_history = "\n".join([f"user: {entry['content']}" for entry in memory])
     # Prepare prompt template
     followup_prompt = PromptTemplate(input_variables=["chat_history", "question"],
-        template = """You are a follow‑up detection assistant. Your job is to decide whether the user’s latest question is a direct continuation of the prior dialogue.
+        template = """You are a follow‑up detection assistant. Your job is to decide whether the user’s latest question is a direct continuation of the prior dialogue. You may find multiple questions 
+                        not linked to each other or vice versa. In case you find a follow-up question return a "Yes" else return "No".
 
         Chat History:
         {chat_history}
