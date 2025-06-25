@@ -374,6 +374,7 @@ def generate_sql_query_for_retrieved_tables(selected_docs, user_question, exampl
         10. **Column name**- Show (SELECT) all the required column names/counts/aggregates(sum,max,min,avg etc.) from required table/tables to answer the question correctly.
         11. Please Replace risk_type column with risk_category1 in SQL query if it is there.
         12. In case question has terms like Critical, High, Medium, Low rated Risks it usually refers to inherent_risk_rating and/or residual_risk_rating columns, this is relevant to only risks.
+        13. If a question references 'top risk' use column 'top_risk' and if it refers 'key risk' use column 'key_risk' from table 'RU_RCM'.
         ## User's Question: {question}  
         ## SQL Query: 
         """,input_variables=["selected_metadata","Question_SQL_Queries_Examples", "question"])
