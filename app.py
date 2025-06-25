@@ -276,11 +276,12 @@ def is_followup_question(llm, memory, current_question):
         1. If the new question explicitly builds on or refers back to a specific element in the history (e.g. uses pronouns like “those,” “that region,” mentions the same unresolved entity, or asks for “further breakdown” of a previously requested metric), answer “Yes.”
         2. If it is a standalone request—even if it’s topically similar (same domain or metrics) but does not depend on a prior answer—answer “No.”
         3. Check for clear signals of dependency:
-               - Referential pronouns or phrases (“that,” “those,” “further,” “next,” “again”) pointing to a past result.
+               - Referential pronouns or phrases (“above,”, "among,"  “further,” “next,” “them”) pointing to a past result.
                - Questions asking “how many of the above,” “among those,” “build on the previous result,” etc.
         4. Do NOT treat mere topic overlap (e.g. “sales,” “risks,” “tickets”) as a follow‑up—there must be an explicit link back to a specific prior response.
         5. Do NOT hallucinate or infer any context beyond what’s literally in the history.
-        6. Do NOT provide any additional text—only “Yes” or “No.”
+        6. Give more weightage to the last two questions in the chat history compared to the others.
+        7. Do NOT provide any additional text—only “Yes” or “No.”
         
         Examples:
         • History:  
