@@ -445,7 +445,7 @@ def finetune_conv_answer(user_question, conv_result, llm):
     You are a Senior Risk Management Analyst with expertise in risk analytics, and regulatory compliance.
     
     **QUERY CONTEXT:**
-    User Question: {question}
+    Question: {question}
     
     **DATA RETRIEVED:**
     {conv_answer}
