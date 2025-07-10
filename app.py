@@ -226,9 +226,8 @@ def process_risk_query(llm, user_question):
         #placeholders["Initial Conversational Draft"].write(conv)
 
     with st.spinner("💬 Finetuning conversational answer..."):
-        #conv = finetune_conv_answer(user_question, conv, llm)
-        conv = analyze_sql_query(user_question, result.to_dict(orient='records'), llm)
-
+        #conv = finetunene_conv_answer(user_question, conv, llm)
+        conv = finetune_conv_answer(user_question, result.to_dict(orient='records'), llm)
     return conv, result, sql
 
 
