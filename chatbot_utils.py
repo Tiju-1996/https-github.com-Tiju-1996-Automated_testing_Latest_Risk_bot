@@ -342,41 +342,40 @@ def generate_sql_query_for_retrieved_tables(selected_docs, user_question, exampl
     
     
     sql_prompt_template = PromptTemplate(template="""
-        You are a data assistant with access to a MySQL database containing a subset of tables.  
+        You are a data assistant with access to a MySQL database containing a subset of tables.
+         
         ## Below is the metadata for the selected tables:  
-        
         {selected_metadata}  
-
-        ## Below are few example sets of questions and their respective SQL queries for your reference:
-
-        {Question_SQL_Queries_Examples} 
-        
-        Strictly generate only a SELECT SQL query to answer the user's question while following these instructions:  
-        
-        1. **Output Only the SQL Query** – Do not include any explanations or additional text. Don't add sql word before or after the query. 
-        2. **Valid SQL Syntax** – Strictly ensure that the generated query is syntactically correct for MySQL. Very important task.   
-        3. **Proper Table and Column Naming** – Use the exact table and column names as provided in the metadata.  
-        4. **Safe Query Structure** – Avoid SQL errors by:  
-           - Enclosing column names in **backticks** (`"`).
-           - Enclosing table names in **backticks** (`"`).
-           - Enclosing table aliases in **backticks** (`"`).
-           - Please never use tablenames or aliases within double quotes.
-           - Using **explicit JOINs** where necessary.  
-           - Using **LIKE '%'** instead of unknown string values in filters.  
-        5. **Consistent Naming & Uniqueness** – Ensure queries focus only on unique:  
-           - Risks, Controls, Issues, Actions, Risk Registers, Causes, Impacts, Mitigation Plans, Risk Programs, and Risk Program Schedules, even if not explicitly mentioned.  
-        6. **Clear Aliasing** – Assign meaningful aliases to tables. This is important. 
-        7. **Column Ambiguity Elimination** – Avoid ambiguous column references by **always specifying the table alias** when selecting or filtering columns. This is very important.
-        8. **Use Aggregation or DISTINCT as Needed** – If a column might contain duplicates, ensure the query retrieves only unique records using `DISTINCT`.  
-        7. **Ensure Correct Joins** –  
-           - Use appropriate **INNER JOIN, LEFT JOIN, or RIGHT JOIN** when multiple tables are involved.  
-           - Always specify the **correct primary and foreign key relationships** from the metadata. 
-        8. **Very Important**- In query use the tablename where all informations/columns relevant ot user question is available, in case it is not available, please join with other tablename where this information is available.
-        9. **Fuzzy matching **-Please use LIKE % incase of fuzzy matching with string for filtering purpose when there is a doubt about actual value/condition. Please prefer LIKE instead of '=' wherever applicable in SQL query.
-        10. **Column name**- Show (SELECT) all the required column names/counts/aggregates(sum,max,min,avg etc.) from required table/tables to answer the question correctly.
-        11. Please Replace risk_type column with risk_category1 in SQL query if it is there.
+         
+        ## Below are a few example questions and their corresponding SQL queries:  
+        {Question_SQL_Queries_Examples}  
+         
+        Your task is to generate a syntactically correct, optimized MySQL **SELECT** query to answer the user’s question. Follow these instructions strictly:
+         
+        Instructions:
+        1. **Output Only the SQL Query** – Do not include any explanations, markdown, or prefix/suffix like “sql”.
+        2. **Valid MySQL Syntax** – The query must be ready for direct execution in a MySQL database.
+        3. **Use Exact Table and Column Names** – Refer to the provided metadata. Match case and spelling precisely.
+        4. **Backtick All Identifiers** – Enclose all column names, table names, and aliases in backticks (\`) to prevent SQL errors.
+        5. **Safe Filters and Matching**:
+           - Use `LIKE '%value%'` for fuzzy matches or when the exact match is uncertain.
+           - Avoid `=` with user-entered strings unless explicitly certain.
+        6. **Join Logic**:
+           - Use **INNER JOIN**, **LEFT JOIN**, or **RIGHT JOIN** where necessary.
+           - Follow the **correct PK-FK relationships** as per the metadata.
+           - **Always use meaningful table aliases** and fully qualify all columns (`alias`.`column_name`).
+        7. **Avoid Ambiguity** – Never refer to unqualified column names if joins are involved.
+        8. **Ensure Uniqueness** – Use `DISTINCT` or aggregation functions (`COUNT`, `SUM`, `AVG`, etc.) when necessary to avoid duplicate records.
+        9. **Table Selection Logic**:
+           - If all necessary data is available in one table, query only that table.
+           - Only join additional tables if required columns are not available in the main table.
+        10. **Special Column Handling**:
+            - Replace any reference to `risk_type` with `risk_category1`.
+        11. **Answer the Question Fully** – Return all relevant columns, calculations, or counts needed to fully address the user's question.
+         
         ## User's Question: {question}  
-        ## SQL Query:  
+        
+              
         """,input_variables=["selected_metadata","Question_SQL_Queries_Examples", "question"])
 
     llm_chain_sql = LLMChain(prompt=sql_prompt_template, llm=llm)
