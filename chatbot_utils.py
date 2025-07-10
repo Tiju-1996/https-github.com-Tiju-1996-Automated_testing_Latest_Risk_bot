@@ -441,54 +441,23 @@ def analyze_sql_query(user_question, tabular_answer, llm):
         return "Sorry, I was not able to answer your question"
 
 def finetune_conv_answer(user_question, conv_result, llm):
-   template_prompt = PromptTemplate(template="""
-   
-    <ROLE>
-    You are a Senior Risk Manager with expertise in enterprise risk management, assessment, control effectiveness evaluation, and risk mitigation strategies.
-    You specialize in analyzing risk data, identifying control gaps, and providing actionable recommendations/actions to reduce organizational risk exposure. 
-    </ROLE>
-    
-    <INSTRUCTION>
-    Analyze the sql generated data to provide a concise, risk-informed recommendationdata below and provide specific recommendations based on what the data shows.
-    
-    User Question: {question}
-    Retrieved Data: {conv_answer}
-    
-    Follow these steps:
-    1. Identify key entities  from the data (use exact risk/controls/department/mitigation plan)
-    2. Assess their current status based on data provided
-    3. Provide specific actions for each identified entities
-    </INSTRUCTION>
-    
-    <REQUIREMENTS>
-    - Identify specific issues from the data
-    - For EACH issue, provide ONE specific recommendation
-    - Include implementation details (who, what, when)
-    </REQUIREMENTS>
-    
-    <OUTPUT_FORMAT>
-    Format:
-    **Entity:** [Name from data]
-    **DATA:** [Key info from data]
-    **RECOMMENDATION:** [One specific action]
-    
-    **Entity:** [Next risk name]
-    **DATA:** [Key info from data]  
-    
-    **RECOMMENDATION:** [One specific action]
-    **ANALYSIS:**
-    [List each risk/item from data with its current status]
-    
-    **RECOMMENDATIONS:**
-    [Specific an action/recommendation for each entity/issue, referencing the data]
-    
-    **PRIORITY:**
-    [Rank items by urgency based on data metrics]
-    </OUTPUT_FORMAT>
-    
-    Analyze the data and respond following this format.
-    """)
-           
+    template_prompt = PromptTemplate(template="""
+        Based on the following {question}, analyze the situation described below, think like a Risk Strategist.
+ 
+        1. Convert this {conv_answer} from an RDBMS table to sentences.
+        2. Based on sentences generated in step 1, please provide a detailed risk based recommendation that aligns with [role’s] responsibilities and judgment standards.”
+        3. Be as detailed as possible.
+        Expected Output:
+        Divide the output into sections as below:
+ 
+        Section 1) Summary of the data
+        Section 2) Interpretation: (what’s happening)
+        Section 3) Reasoned judgment: (why it matters)
+        Section 4) Recommendation: (what should be done)
+ 
+        Section 5) Conclude the answer using reasoned judgement and recommendation.
+ 
+        Next steps in 1 or 2 lines:
         """, input_variables=["question", "conv_answer"])
     try:
         llm_conv_chain = LLMChain(prompt=template_prompt, llm=llm)
