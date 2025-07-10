@@ -449,7 +449,7 @@ def finetune_conv_answer(user_question, conv_result, llm):
     </ROLE>
     
     <INSTRUCTION>
-    Analyze the data below and provide specific recommendations based on what the data shows.
+    Analyze the sql generated data to provide a concise, risk-informed recommendationdata below and provide specific recommendations based on what the data shows.
     
     User Question: {question}
     Retrieved Data: {conv_answer}
