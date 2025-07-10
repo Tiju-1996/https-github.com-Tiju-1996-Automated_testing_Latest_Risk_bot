@@ -452,8 +452,8 @@ def finetune_conv_answer(user_question, conv_result, llm):
     </context>
     
     <task>
-    Analyze the provided data and give specific recommendations for each control mentioned. Each recommendation MUST reference the actual control name and data from the table.
-    </task>
+   Analyze the provided data to answer the user's question with specific, data-driven recommendations and insights. Base ALL analysis strictly on the data provided.
+</task>
     
     <requirements>
     1. MANDATORY: Reference specific control names/IDs from the data
@@ -464,70 +464,42 @@ def finetune_conv_answer(user_question, conv_result, llm):
     </requirements>
     
     <analysis_framework>
-    For each control in the data, follow this structure:
+    **STEP 1: DATA INTERPRETATION**
+    - Identify key entities (controls, mitigation plans, department, risks, metrics, etc.) from the data
+    - Extract relevant numbers, trends, or patterns
+    - Note any concerning values or anomalies
     
-    **CONTROL ANALYSIS:**
-    - Control Name: [Extract exact name from data]
-    - Current Metrics: [List specific numbers/ratings from data]
-    - Risk Assessment: [Based on data provided]
-    - Specific Recommendation: [Tailored action for this control]
-    - Business Impact: [Expected outcome based on data]
+    **STEP 2: RISK ASSESSMENT**
+    - Evaluate significance of the data points
+    - Compare values against thresholds or benchmarks (if provided in data)
+    - Identify priority areas based on quantitative evidence
     
-    **PRIORITIZATION:**
-    Rank controls by urgency based on data (risk scores, failure rates, etc.)
+    **STEP 3: TARGETED RECOMMENDATIONS**
+    - Provide specific actions tied to individual data points or entities
+    - Prioritize recommendations by impact and urgency
+    - Include measurable outcomes where possible
     </analysis_framework>
     
-    <example_input_output>
-    Example Data Input:
-    "Control_ID: CTRL-001, Control_Name: Monthly Bank Reconciliation, Type: Manual, Risk_Score: 8, Frequency: Monthly, Last_Failure: 2023-12-15"
+    <response_structure>
+    **KEY INSIGHTS:**
+    [Specific observations based on the data, with exact figures and names]
     
-    Example Expected Output:
-    **CONTROL: Monthly Bank Reconciliation (CTRL-001)**
-    - Current Metrics: Manual process, Risk Score 8/10, Monthly frequency, Recent failure on 2023-12-15
-    - Risk Assessment: High risk score of 8 indicates significant exposure, recent failure suggests process breakdown
-    - Specific Recommendation: Implement automated bank statement import and matching algorithm to reduce manual errors. Maintain manual review only for exceptions >$5,000
-    - Business Impact: Expected to reduce risk score from 8 to 4, eliminate 80% of manual reconciliation time
-    </example_input_output>
+    **RECOMMENDATIONS:**
+    [Actionable items tied to specific data points, prioritized by importance]
     
-    <output_format>
-    **CONTROLS IDENTIFIED FROM DATA:**
-    [List each control with key metrics]
-    
-    **DETAILED RECOMMENDATIONS:**
-    
-    **CONTROL: [Exact Name from Data]**
-    - Current Metrics: [Specific data points]
-    - Risk Assessment: [Based on numbers in data]
-    - Recommendation: [Specific action for this control]
-    - Expected Impact: [Quantified improvement where possible]
-    
-    [Repeat for each control in the data]
-    
-    **IMPLEMENTATION PRIORITY:**
-    1. [Highest risk control] - [Specific action]
-    2. [Second priority] - [Specific action]
-    3. [Continue based on data...]
-    </output_format>
-    
-    <validation_checklist>
-    Before responding, verify:
-    ☐ Every control mentioned in data has specific recommendation
-    ☐ Each recommendation uses actual data points (numbers, names, scores)
-    ☐ No generic advice without data backing
-    ☐ All control names match exactly what's in the data
-    ☐ Recommendations are actionable and specific
-    </validation_checklist>
+    **IMPLEMENTATION NOTES:**
+    [Practical guidance for executing recommendations, based on data context]
+    </response_structure>
     
     <response_rules>
-    - Start immediately with "**CONTROLS IDENTIFIED FROM DATA:**"
-    - Use bullet points and clear formatting
-    - Quote exact control names from the data
-    - Include specific numbers and metrics in each recommendation
-    - If data is missing for a control, state "Insufficient data for [specific aspect]"
-    - Keep recommendations concise but specific
+    - Use specific names, numbers, and identifiers from the data
+    - Structure recommendations clearly with bullet points
+    - If data is insufficient for any aspect, state "Data insufficient for [specific aspect]"
+    - Keep language professional but concise
+    - Focus on the most critical findings first
     </response_rules>
-    
-    Now analyze the data and provide control-specific recommendations following this framework.
+
+    Now analyze the retrieved data and provide specific, data-driven insights to answer the user's question.
     """)
         
          
