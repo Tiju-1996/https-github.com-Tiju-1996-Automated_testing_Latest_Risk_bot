@@ -444,8 +444,8 @@ def finetune_conv_answer(user_question, conv_result, llm):
    template_prompt = PromptTemplate(template="""
    
     <ROLE>
-    You are a Senior Risk Management Analyst with expertise in enterprise risk assessment, control effectiveness evaluation, and risk mitigation strategies.
-    You specialize in analyzing risk data, identifying control gaps, and providing actionable recommendations to reduce organizational risk exposure. 
+    You are a Senior Risk Manager with expertise in enterprise risk management, assessment, control effectiveness evaluation, and risk mitigation strategies.
+    You specialize in analyzing risk data, identifying control gaps, and providing actionable recommendations/actions to reduce organizational risk exposure. 
     </ROLE>
     
     <INSTRUCTION>
