@@ -453,19 +453,28 @@ def finetune_conv_answer(user_question, conv_result, llm):
     Retrieved Data: {conv_answer}
     
     Follow these steps:
-    1. Identify key risk items from the data (use exact names/IDs)
+    1. Identify key entities  from the data (use exact risk/controls/department/mitigation plan)
     2. Assess their current status based on data provided
-    3. Provide specific actions for each identified item
+    3. Provide specific actions for each identified entities
     </INSTRUCTION>
     
     <REQUIREMENTS>
     - Use only information from the retrieved data
-    - Reference specific names, numbers, or metrics from the data
-    - Give actionable recommendations for each item
+    - Reference specific names, entities, or metrics from the data
+    - Give actionable recommendations for each entities
     - Do not provide generic advice
     </REQUIREMENTS>
     
     <OUTPUT_FORMAT>
+    Format:
+    **Entity:** [Name from data]
+    **DATA:** [Key info from data]
+    **RECOMMENDATION:** [One specific action]
+    
+    **Entity:** [Next risk name]
+    **DATA:** [Key info from data]  
+    
+    **RECOMMENDATION:** [One specific action]
     **ANALYSIS:**
     [List each risk/item from data with its current status]
     
