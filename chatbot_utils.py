@@ -453,7 +453,7 @@ def finetune_conv_answer(user_question, conv_result, llm):
     
     <task>
    Analyze the provided data to answer the user's question with specific, data-driven recommendations and insights. Base ALL analysis strictly on the data provided.
-</task>
+    </task>
     
     <requirements>
     1. MANDATORY: Reference specific control names/IDs from the data
