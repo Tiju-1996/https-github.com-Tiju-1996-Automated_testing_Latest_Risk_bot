@@ -461,10 +461,9 @@ def finetune_conv_answer(user_question, conv_result, llm):
     </INSTRUCTION>
     
     <REQUIREMENTS>
-    - Use only information from the retrieved data
-    - Reference specific names, entities, or metrics from the data
-    - Give actionable recommendations for each entities
-    - Do not provide generic advice
+    - Identify specific issues from the data
+    - For EACH issue, provide ONE specific recommendation
+    - Include implementation details (who, what, when)
     </REQUIREMENTS>
     
     <OUTPUT_FORMAT>
@@ -481,7 +480,7 @@ def finetune_conv_answer(user_question, conv_result, llm):
     [List each risk/item from data with its current status]
     
     **RECOMMENDATIONS:**
-    [Specific action for each item, referencing the data]
+    [Specific an action/recommendation for each entity/issue, referencing the data]
     
     **PRIORITY:**
     [Rank items by urgency based on data metrics]
