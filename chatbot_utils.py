@@ -342,40 +342,58 @@ def generate_sql_query_for_retrieved_tables(selected_docs, user_question, exampl
     
     
     sql_prompt_template = PromptTemplate(template="""
-        You are a data assistant with access to a MySQL database containing a subset of tables.
+        You are a MySQL expert SQL assistant. You will be given:
          
-        ## Below is the metadata for the selected tables:  
+        1. A set of metadata for available database tables.
+        2. A few example SQL queries.
+        3. A user's natural language question.
+         
+        Your task is to generate a **production-ready, efficient, and syntactically correct SELECT SQL query** that answers the question.
+         
+        ## Metadata for available tables:  
         {selected_metadata}  
          
-        ## Below are a few example questions and their corresponding SQL queries:  
+        ## Example SQL queries for reference:  
         {Question_SQL_Queries_Examples}  
          
-        Your task is to generate a syntactically correct, optimized MySQL **SELECT** query to answer the user’s question. Follow these instructions strictly:
+        ## Your Instructions:
          
-        Instructions:
-        1. **Output Only the SQL Query** – Do not include any explanations, markdown, or prefix/suffix like “sql”.
-        2. **Valid MySQL Syntax** – The query must be ready for direct execution in a MySQL database.
-        3. **Use Exact Table and Column Names** – Refer to the provided metadata. Match case and spelling precisely.
-        4. **Backtick All Identifiers** – Enclose all column names, table names, and aliases in backticks (\`) to prevent SQL errors.
-        5. **Safe Filters and Matching**:
-           - Use `LIKE '%value%'` for fuzzy matches or when the exact match is uncertain.
-           - Avoid `=` with user-entered strings unless explicitly certain.
-        6. **Join Logic**:
-           - Use **INNER JOIN**, **LEFT JOIN**, or **RIGHT JOIN** where necessary.
-           - Follow the **correct PK-FK relationships** as per the metadata.
-           - **Always use meaningful table aliases** and fully qualify all columns (`alias`.`column_name`).
-        7. **Avoid Ambiguity** – Never refer to unqualified column names if joins are involved.
-        8. **Ensure Uniqueness** – Use `DISTINCT` or aggregation functions (`COUNT`, `SUM`, `AVG`, etc.) when necessary to avoid duplicate records.
-        9. **Table Selection Logic**:
-           - If all necessary data is available in one table, query only that table.
-           - Only join additional tables if required columns are not available in the main table.
-        10. **Special Column Handling**:
-            - Replace any reference to `risk_type` with `risk_category1`.
-        11. **Answer the Question Fully** – Return all relevant columns, calculations, or counts needed to fully address the user's question.
+        Strictly follow the instructions below when generating the SQL query:
          
-        ## User's Question: {question}  
-        
-              
+        1. **Output Format**  
+           - Return only the raw SQL query. No explanation, markdown, or pre/post text.  
+           - Use standard MySQL syntax.
+         
+        2. **Correctness Rules**  
+           - Use exact table and column names as given in the metadata.  
+           - Enclose all column names, table names, and aliases in backticks (`).  
+           - Use **table aliases** consistently and meaningfully.  
+           - Avoid ambiguous column references — always use the format `alias`.`column`.
+         
+        3. **Performance Optimization**  
+           - Use **indexed columns in WHERE clauses** where available.  
+           - Avoid `SELECT *` — always select only the necessary columns.  
+           - Use `LIMIT` when expecting high volumes and only a preview is needed.  
+           - Avoid using functions in WHERE clauses unless required (to preserve index usage).  
+           - Prefer `LIKE 'value%'` over `LIKE '%value%'` when feasible for index usage.  
+           - Avoid unnecessary subqueries, joins, or sorting.  
+           - Use `DISTINCT`, `GROUP BY`, or aggregations (`SUM`, `AVG`, etc.) only if needed.
+         
+        4. **Join Logic**  
+           - Use INNER JOIN or LEFT JOIN where appropriate.  
+           - Join only when required columns are not in the main table.  
+           - Ensure joins use correct foreign key relationships based on metadata.
+         
+        5. **Filter Conditions**  
+           - Use WHERE only when required by the question.  
+           - Use `LIKE '%value%'` for fuzzy string matches or when the exact match is uncertain.  
+           - Use conditions only on required indexed columns when possible.
+         
+        6. **Special Instructions**  
+           - If the column `risk_type` is referenced, always use `risk_category1` instead.  
+           - Ensure the result focuses on **unique** Risks, Controls, Issues, Actions, Risk Registers, Causes, Impacts, Mitigation Plans, Risk Programs, and Risk Program Schedules — even if uniqueness isn't explicitly requested.
+         
+        ## User's Question: {question} 
         """,input_variables=["selected_metadata","Question_SQL_Queries_Examples", "question"])
 
     llm_chain_sql = LLMChain(prompt=sql_prompt_template, llm=llm)
@@ -441,21 +459,11 @@ def analyze_sql_query(user_question, tabular_answer, llm):
 
 def finetune_conv_answer(user_question, conv_result, llm):
     template_prompt = PromptTemplate(template="""
-        Based on the following {question}, analyze the situation described below, think like a Risk Strategist.
- 
-        1. Convert this {conv_answer} from an RDBMS table to sentences.
-        2. Based on sentences generated in step 1, please provide a detailed risk based recommendation that aligns with [role’s] responsibilities and judgment standards.”
-        3. Be as detailed as possible.
-        Expected Output:
-        Divide the output into sections as below:
- 
-        Section 1) Summary of the data
-        Section 2) Interpretation: (what’s happening)
-        Section 3) Reasoned judgment: (why it matters)
-        Section 4) Recommendation: (what should be done)
- 
-        Section 5) Conclude the answer using reasoned judgement and recommendation.
- 
+        Based on the following {question}, analyze the situation described below, think like a Risk Manager.
+        
+        1. Based on {conv_answer} generated in step 1, generate a response with key sections such as Summary, Interpretation, Seasoned judgement, Recommendation and Conclusion.
+        
+        
         Next steps in 1 or 2 lines:
         """, input_variables=["question", "conv_answer"])
     try:
