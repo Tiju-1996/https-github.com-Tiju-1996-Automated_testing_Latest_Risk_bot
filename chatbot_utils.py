@@ -461,10 +461,9 @@ def finetune_conv_answer(user_question, conv_result, llm):
     template_prompt = PromptTemplate(template="""
         Based on the following {question}, analyze the situation described below, think like a Risk Manager.
         
-        1. Based on {conv_answer} generated in step 1, generate a response with key sections such as Summary, Interpretation, Seasoned judgement, Recommendation and Conclusion.
+        Based on {conv_answer} generated in step 1, generate a response with key sections such as Summary of the data with examples and supporting evidence,
+        Recommendations (in case of mutiple data points in the {conv_answer} generate recommendations per data point) and Conclusion.
         
-        
-        Next steps in 1 or 2 lines:
         """, input_variables=["question", "conv_answer"])
     try:
         llm_conv_chain = LLMChain(prompt=template_prompt, llm=llm)
