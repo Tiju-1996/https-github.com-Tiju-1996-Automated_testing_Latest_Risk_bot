@@ -463,6 +463,8 @@ def finetune_conv_answer(user_question, conv_result, llm):
         
         Based on {conv_answer} generated in step 1, generate a response with key sections such as Summary of the data with examples and supporting evidence,
         Recommendations (in case of mutiple data points in the {conv_answer} generate recommendations per data point) and Conclusion.
+        Use <br> for line breaks if needed.
+        Use <br> instead of new line.
         
         """, input_variables=["question", "conv_answer"])
     try:
