@@ -402,11 +402,18 @@ else:
 
 
 
+
+
 st.sidebar.markdown("### 📊 Upload Questions for Evaluation")
 uploaded_file = st.file_uploader("Upload an Excel/CSV file with 'Questions' and 'Ground Truth Answers'", type=["xlsx", "csv"])
+
+# Collect number of runs
+n_runs = st.sidebar.number_input("🔁 Number of times to run evaluation per question", min_value=1, max_value=4, value=1, step=1)
+
 evaluate_btn = st.button("📈 Evaluate Chatbot Performance")
 evaluation_output_path = "Evaluated_Output_with_Time.csv"
 evaluation_done = False
+
 if evaluate_btn and uploaded_file is not None:
     input_df = None
     try:
@@ -417,6 +424,7 @@ if evaluate_btn and uploaded_file is not None:
 
         if input_df is not None and "Questions" in input_df.columns and "Ground Truth Answers" in input_df.columns:
             st.success("✅ File uploaded and read successfully. Starting evaluation...")
+
             # Define chatbot LLMs
             llm_audit = ChatNVIDIA(
                 model="ibnzterrell/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",
@@ -426,36 +434,60 @@ if evaluate_btn and uploaded_file is not None:
                 top_p=0.1,
                 seed=42
             )
-            llm_finetune = ChatOpenAI(model_name="gpt-4-turbo", openai_api_key= OPENAI_KEY , temperature=0, max_tokens=1024)
+            llm_finetune = ChatOpenAI(model_name="gpt-4-turbo", openai_api_key=OPENAI_KEY, temperature=0, max_tokens=1024)
             ragas_llm = LangchainLLMWrapper(llm_finetune)
 
-            # Run evaluation
-            def evaluate_chatbot(input_df, output_filepath, llm_audit, llm_finetune, ragas_llm_wrapper):
+            # Evaluation Function
+            def evaluate_chatbot_multiple(input_df, output_filepath, llm_audit, llm_finetune, ragas_llm_wrapper, n=1):
                 accuracy_metric = AnswerAccuracy(llm=ragas_llm_wrapper)
                 df = input_df.dropna(subset=["Questions", "Ground Truth Answers"], how="any")
                 records = []
+
                 for _, row in df.iterrows():
                     question = str(row["Questions"]).strip()
                     ground = str(row["Ground Truth Answers"]).strip()
-                    start = time.time()
-                    answer, result, sql = process_risk_query(llm_audit, question, llm_finetune)
-                    if not answer:
-                        answer = "Sorry, I couldn't answer your question."
-                    response_time = time.time() - start
-                    sample = SingleTurnSample(user_input=question, response=answer, reference=ground)
-                    score = asyncio.run(accuracy_metric.single_turn_ascore(sample))
+                    total_score = 0.0
+                    total_time = 0.0
+                    final_answer = None
+
+                    for i in range(n):
+                        start = time.time()
+                        answer, result, sql = process_risk_query(llm_audit, question, llm_finetune)
+                        if not answer:
+                            answer = "Sorry, I couldn't answer your question."
+                        response_time = time.time() - start
+                        sample = SingleTurnSample(user_input=question, response=answer, reference=ground)
+                        score = asyncio.run(accuracy_metric.single_turn_ascore(sample))
+
+                        total_score += score
+                        total_time += response_time
+                        if i == 0:
+                            final_answer = answer  # Save first answer for inspection
+
+                    avg_score = total_score / n
+                    avg_time = total_time / n
+
                     records.append({
                         "question": question,
                         "ground_truth": ground,
-                        "answer": answer,
-                        "score": score,
-                        "response_time": response_time
+                        "answer": final_answer,
+                        "average_score": avg_score,
+                        "average_response_time": avg_time
                     })
+
                 out_df = pd.DataFrame(records)
                 out_df.to_csv(output_filepath, index=False)
 
-            evaluate_chatbot(input_df, evaluation_output_path, llm_audit, llm_finetune, ragas_llm)
-            st.success("✅ Evaluation complete.")
+            # Run evaluation
+            evaluate_chatbot_multiple(
+                input_df=input_df,
+                output_filepath=evaluation_output_path,
+                llm_audit=llm_audit,
+                llm_finetune=llm_finetune,
+                ragas_llm_wrapper=ragas_llm,
+                n=n_runs
+            )
+            st.success(f"✅ Evaluation complete — each question ran {n_runs} times.")
             evaluation_done = True
         else:
             st.error("❌ Required columns not found in file.")
@@ -472,4 +504,3 @@ if evaluation_done or os.path.exists(evaluation_output_path):
             file_name="evaluated_output_with_time.csv",
             mime="text/csv"
         )
-
