@@ -164,7 +164,7 @@ def log_to_google_sheets(entry):
 
 
 # Core processing, without UI
-def process_risk_query(llm, user_question, llm_finetune):
+def process_risk_query(llm, user_question):
     # Check if 'conn' and 'vector_store' are already in session state
     if 'conn' not in st.session_state or 'vector_store' not in st.session_state:
         with st.spinner("🔍 Connecting to the Risk management database..."):
@@ -234,7 +234,7 @@ def process_risk_query(llm, user_question, llm_finetune):
 
     with st.spinner("💬 Finetuning conversational answer..."):
         #conv = finetune_conv_answer(user_question, conv, llm)
-        conv =  finetune_conv_answer(user_question, result.to_dict(orient='records'), llm_finetune)
+        conv =  finetune_conv_answer(user_question, result.to_dict(orient='records'), llm)
 
     return conv, result, sql
 
@@ -307,7 +307,7 @@ else:
         st.session_state.risk_msgs.append({"role":"user","content":prompt})
         # Process the question
         #with st.spinner("Generating the answer..."):
-        conv, result, sql = process_risk_query(llm_audit, prompt, llm_finetune)
+        conv, result, sql = process_risk_query(llm_audit, prompt)
         if conv is None:
             st.chat_message("assistant").write( "Sorry, I couldn't answer your question.")
             st.session_state.risk_msgs.append({"role":"assistant","content":"Sorry, I couldn't answer your question."})
@@ -453,7 +453,7 @@ if evaluate_btn and uploaded_file is not None:
 
                     for i in range(n):
                         start = time.time()
-                        answer, result, sql = process_risk_query(llm_audit, question, llm_finetune)
+                        answer, result, sql = process_risk_query(llm_audit, question)
                         if not answer:
                             answer = "Sorry, I couldn't answer your question."
                         response_time = time.time() - start
@@ -535,13 +535,13 @@ if complex_evaluate_btn and uploaded_file is not None:
                     total_score = 0.0
                     total_time = 0.0
                     final_answer = None
-                    ground_o, result, sql = process_risk_query(llm_finetune, question, llm_finetune)
+                    ground_o, result, sql = process_risk_query(llm_finetune, question)
                     if not ground_o:
                         ground_o = "Sorry, I couldn't answer your question."
 
                     for i in range(n):
                         start = time.time()
-                        answer, result, sql = process_risk_query(llm_audit, question, llm_finetune)
+                        answer, result, sql = process_risk_query(llm_audit, question)
                         if not answer:
                             answer = "Sorry, I couldn't answer your question."
                         response_time = time.time() - start
