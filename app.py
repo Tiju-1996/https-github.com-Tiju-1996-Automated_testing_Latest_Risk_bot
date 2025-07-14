@@ -406,6 +406,7 @@ st.sidebar.markdown("### 📊 Upload Questions for Evaluation")
 uploaded_file = st.file_uploader("Upload an Excel/CSV file with 'Questions' and 'Ground Truth Answers'", type=["xlsx", "csv"])
 evaluate_btn = st.button("📈 Evaluate Chatbot Performance")
 evaluation_output_path = "Evaluated_Output_with_Time.csv"
+evaluation_done = False
 if evaluate_btn and uploaded_file is not None:
     input_df = None
     try:
