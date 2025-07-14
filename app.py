@@ -427,7 +427,7 @@ if evaluate_btn and uploaded_file is not None:
                 seed=42
             )
             llm_finetune = ChatOpenAI(model_name="gpt-4-turbo", openai_api_key= OPENAI_KEY , temperature=0, max_tokens=1024)
-            ragas_llm = LangchainLLMWrapper(llm_audit)
+            ragas_llm = LangchainLLMWrapper(llm_finetune)
 
             # Run evaluation
             def evaluate_chatbot(input_df, output_filepath, llm_audit, llm_finetune, ragas_llm_wrapper):
