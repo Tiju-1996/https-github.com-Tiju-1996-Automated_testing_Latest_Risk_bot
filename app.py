@@ -406,14 +406,15 @@ else:
 
 st.sidebar.markdown("### 📊 Upload Questions for Evaluation")
 uploaded_file = st.file_uploader("Upload an Excel/CSV file with 'Questions' and 'Ground Truth Answers'", type=["xlsx", "csv"])
-
 # Collect number of runs
 n_runs = st.sidebar.number_input("🔁 Number of times to run evaluation per question", min_value=1, max_value=4, value=1, step=1)
-
-evaluate_btn = st.button("📈 Evaluate Chatbot Performance")
+evaluate_btn = st.button("📈 Evaluate Chatbot Performance with Ground Truth")
+complex_evaluate_btn = st.button("📈 Evaluate Chatbot Performance with OpenAI")
 evaluation_output_path = "Evaluated_Output_with_Time.csv"
 evaluation_done = False
 
+
+#Simple evaluation using ground truth
 if evaluate_btn and uploaded_file is not None:
     input_df = None
     try:
@@ -457,6 +458,94 @@ if evaluate_btn and uploaded_file is not None:
                             answer = "Sorry, I couldn't answer your question."
                         response_time = time.time() - start
                         sample = SingleTurnSample(user_input=question, response=answer, reference=ground)
+                        score = asyncio.run(accuracy_metric.single_turn_ascore(sample))
+
+                        total_score += score
+                        total_time += response_time
+                        if i == 0:
+                            final_answer = answer  # Save first answer for inspection
+
+                    avg_score = total_score / n
+                    avg_time = total_time / n
+
+                    records.append({
+                        "question": question,
+                        "ground_truth": ground,
+                        "answer": final_answer,
+                        "average_score": avg_score,
+                        "average_response_time": avg_time
+                    })
+
+                out_df = pd.DataFrame(records)
+                out_df.to_csv(output_filepath, index=False)
+
+            # Run evaluation
+            evaluate_chatbot_multiple(
+                input_df=input_df,
+                output_filepath=evaluation_output_path,
+                llm_audit=llm_audit,
+                llm_finetune=llm_finetune,
+                ragas_llm_wrapper=ragas_llm,
+                n=n_runs
+            )
+            st.success(f"✅ Evaluation complete — each question ran {n_runs} times.")
+            evaluation_done = True
+        else:
+            st.error("❌ Required columns not found in file.")
+
+    except Exception as e:
+        st.error(f"⚠️ Error during evaluation: {e}")
+
+
+
+
+# Complex evaluation using ground truth
+if complex_evaluate_btn and uploaded_file is not None:
+    input_df = None
+    try:
+        if uploaded_file.name.endswith(".xlsx"):
+            input_df = pd.read_excel(uploaded_file)
+        elif uploaded_file.name.endswith(".csv"):
+            input_df = pd.read_csv(uploaded_file)
+
+        if input_df is not None and "Questions" in input_df.columns and "Ground Truth Answers" in input_df.columns:
+            st.success("✅ File uploaded and read successfully. Starting evaluation...")
+
+            # Define chatbot LLMs
+            llm_audit = ChatNVIDIA(
+                model="ibnzterrell/Meta-Llama-3.3-70B-Instruct-AWQ-INT4",
+                base_url="http://54.161.46.7/v1/",
+                temperature=0,
+                max_tokens=1024,
+                top_p=0.1,
+                seed=42
+            )
+            llm_finetune = ChatOpenAI(model_name="gpt-4-turbo", openai_api_key=OPENAI_KEY, temperature=0, max_tokens=1024)
+            ragas_llm = LangchainLLMWrapper(llm_finetune)
+
+            # Evaluation Function
+            def evaluate_chatbot_multiple(input_df, output_filepath, llm_audit, llm_finetune, ragas_llm_wrapper, n=1):
+                accuracy_metric = AnswerAccuracy(llm=ragas_llm_wrapper)
+                df = input_df.dropna(subset=["Questions", "Ground Truth Answers"], how="any")
+                records = []
+
+                for _, row in df.iterrows():
+                    question = str(row["Questions"]).strip()
+                    #ground = str(row["Ground Truth Answers"]).strip()
+                    total_score = 0.0
+                    total_time = 0.0
+                    final_answer = None
+
+                    for i in range(n):
+                        start = time.time()
+                        answer, result, sql = process_risk_query(llm_audit, question, llm_finetune)
+                        if not answer:
+                            answer = "Sorry, I couldn't answer your question."
+                        response_time = time.time() - start
+                        ground_o, result, sql = process_risk_query(llm_finetune, question, llm_finetune)
+                        if not ground_o:
+                            ground_o = "Sorry, I couldn't answer your question."
+                        sample = SingleTurnSample(user_input=question, response=answer, reference=ground_o)
                         score = asyncio.run(accuracy_metric.single_turn_ascore(sample))
 
                         total_score += score
