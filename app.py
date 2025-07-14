@@ -508,7 +508,7 @@ if complex_evaluate_btn and uploaded_file is not None:
         elif uploaded_file.name.endswith(".csv"):
             input_df = pd.read_csv(uploaded_file)
 
-        if input_df is not None and "Questions" in input_df.columns and "Ground Truth Answers" in input_df.columns:
+        if input_df is not None and "Questions" in input_df.columns:
             st.success("✅ File uploaded and read successfully. Starting evaluation...")
 
             # Define chatbot LLMs
@@ -526,7 +526,7 @@ if complex_evaluate_btn and uploaded_file is not None:
             # Evaluation Function
             def evaluate_chatbot_multiple(input_df, output_filepath, llm_audit, llm_finetune, ragas_llm_wrapper, n=1):
                 accuracy_metric = AnswerAccuracy(llm=ragas_llm_wrapper)
-                df = input_df.dropna(subset=["Questions", "Ground Truth Answers"], how="any")
+                df = input_df.dropna(subset=["Questions"], how="any")
                 records = []
 
                 for _, row in df.iterrows():
@@ -535,6 +535,9 @@ if complex_evaluate_btn and uploaded_file is not None:
                     total_score = 0.0
                     total_time = 0.0
                     final_answer = None
+                    ground_o, result, sql = process_risk_query(llm_finetune, question, llm_finetune)
+                    if not ground_o:
+                        ground_o = "Sorry, I couldn't answer your question."
 
                     for i in range(n):
                         start = time.time()
@@ -542,9 +545,6 @@ if complex_evaluate_btn and uploaded_file is not None:
                         if not answer:
                             answer = "Sorry, I couldn't answer your question."
                         response_time = time.time() - start
-                        ground_o, result, sql = process_risk_query(llm_finetune, question, llm_finetune)
-                        if not ground_o:
-                            ground_o = "Sorry, I couldn't answer your question."
                         sample = SingleTurnSample(user_input=question, response=answer, reference=ground_o)
                         score = asyncio.run(accuracy_metric.single_turn_ascore(sample))
 
