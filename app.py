@@ -558,7 +558,7 @@ if complex_evaluate_btn and uploaded_file is not None:
 
                     records.append({
                         "question": question,
-                        "ground_truth": ground,
+                        "ground_truth": ground_o,
                         "answer": final_answer,
                         "average_score": avg_score,
                         "average_response_time": avg_time
