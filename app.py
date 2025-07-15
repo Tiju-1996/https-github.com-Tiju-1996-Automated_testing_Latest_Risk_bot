@@ -564,8 +564,8 @@ if complex_evaluate_btn and uploaded_file is not None:
                         "Average_response_time": avg_time
                     })
 
-                out_df = pd.DataFrame(records)
-                out_df.to_csv(output_filepath, index=False)
+                    out_df = pd.DataFrame(records)
+                    out_df.to_csv(output_filepath, index=False)
 
             # Run evaluation
             evaluate_chatbot_multiple(
