@@ -469,11 +469,11 @@ if evaluate_btn and uploaded_file is not None:
                     avg_time = total_time / n
 
                     records.append({
-                        "question": question,
-                        "ground_truth": ground,
-                        "answer": final_answer,
-                        "average_score": avg_score,
-                        "average_response_time": avg_time
+                        "Question": question,
+                        "Ground_Truth": ground,
+                        "vLLM Answer": final_answer,
+                        "Average_score": avg_score,
+                        "Average_response_time": avg_time
                     })
 
                 out_df = pd.DataFrame(records)
@@ -557,11 +557,11 @@ if complex_evaluate_btn and uploaded_file is not None:
                     avg_time = total_time / n
 
                     records.append({
-                        "question": question,
-                        "ground_truth": ground_o,
-                        "answer": final_answer,
-                        "average_score": avg_score,
-                        "average_response_time": avg_time
+                        "Question": question,
+                        "Open_AI Answer": ground_o,
+                        "vLLM Answer": final_answer,
+                        "Average_score": avg_score,
+                        "Average_response_time": avg_time
                     })
 
                 out_df = pd.DataFrame(records)
