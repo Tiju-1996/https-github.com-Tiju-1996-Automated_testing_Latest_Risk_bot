@@ -408,8 +408,8 @@ st.sidebar.markdown("### 📊 Upload Questions for Evaluation")
 uploaded_file = st.file_uploader("Upload an Excel/CSV file with 'Questions' and 'Ground Truth Answers'", type=["xlsx", "csv"])
 # Collect number of runs
 n_runs = st.sidebar.number_input("🔁 Number of times to run evaluation per question", min_value=1, max_value=4, value=1, step=1)
-evaluate_btn = st.button("📈 Evaluate Chatbot Performance with Ground Truth")
-complex_evaluate_btn = st.button("📈 Evaluate Chatbot Performance with OpenAI")
+evaluate_btn = st.button("📈Compare chatbot answers to ground truth for simple questions.")
+complex_evaluate_btn = st.button("📈 Compare chatbot answers to Open AI answers for complex questions.")
 evaluation_output_path = "Evaluated_Output_with_Time.csv"
 evaluation_done = False
 
